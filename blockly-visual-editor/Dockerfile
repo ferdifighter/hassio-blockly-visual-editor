@@ -30,4 +30,16 @@ LABEL \
     io.hass.arch="${BUILD_ARCH}" \
     io.hass.type="addon" \
     io.hass.version="${BUILD_VERSION}" \
-    maintainer="Franck Nijhof <frenck@addons.community>" 
+    maintainer="Franck Nijhof <frenck@addons.community>"
+
+# Build React-Frontend
+WORKDIR /frontend
+RUN npm install && npm run build
+WORKDIR /
+
+# Build React-Frontend
+WORKDIR /frontend
+RUN npm install && npm run build
+WORKDIR /
+
+CMD ["node", "/server.js"] 
