@@ -10,7 +10,7 @@ const PORT = process.env.PORT || 3000;
 // Middleware
 app.use(cors());
 app.use(express.json());
-app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.static(path.join(__dirname, 'frontend', 'build')));
 
 // Home Assistant API Konfiguration
 const HASS_API_URL = process.env.HASS_API_URL || 'http://supervisor/core/api';
@@ -89,9 +89,9 @@ app.get('/api/entities', async (req, res) => {
     }
 });
 
-// Hauptroute
-app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+// Alle anderen Routen auf React-Frontend
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, 'frontend', 'build', 'index.html'));
 });
 
 // Server starten
