@@ -26,5 +26,9 @@
     "log_level": "list(debug|info|notice|warning|error|fatal)?",
     "hass_api_url": "str?",
     "hass_token": "str?"
-  }
+  },
+  "ingress": true,
+  "ingress_port": 3000,
+  "panel_icon": "mdi:puzzle",
+  "panel_title": "Blockly Editor"
 } 
