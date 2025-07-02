@@ -36,3 +36,37 @@
     transform: rotate(360deg);
   }
 }
+
+/* Panel-Titelleisten (FlexLayout) noch heller gestalten */
+.flexlayout__tabset_header, .flexlayout__border_button, .flexlayout__border_header {
+  background: #3a3b40 !important;
+  color: #fff !important;
+}
+
+.flexlayout__tab_button--selected, .flexlayout__tab_button {
+  background: #484950 !important;
+  color: #fff !important;
+}
+
+.flexlayout__border_tab_button--selected, .flexlayout__border_tab_button {
+  background: #484950 !important;
+  color: #fff !important;
+}
+
+/* Trennlinien etwas heller */
+.flexlayout__splitter {
+  background: #555 !important;
+}
+
+/* Speziell für Border-Bereich unten (Debug-Leiste) */
+.flexlayout__border.flexlayout__border_bottom,
+.flexlayout__border_inner.flexlayout__border_inner_bottom,
+.flexlayout__border_toolbar.flexlayout__border_toolbar_bottom {
+  background: #3a3b40 !important;
+  color: #fff !important;
+}
+
+/* Sidebar-Panel-Header (links) ausblenden */
+.flexlayout__tabset:first-child .flexlayout__tabset_header {
+  display: none !important;
+}
