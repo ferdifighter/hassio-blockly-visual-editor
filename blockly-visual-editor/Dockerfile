@@ -32,14 +32,8 @@ LABEL \
     io.hass.version="${BUILD_VERSION}" \
     maintainer="Franck Nijhof <frenck@addons.community>"
 
-# Build React-Frontend
-WORKDIR /frontend
-RUN npm install && npm run build
-WORKDIR /
+# React-Frontend Build ins Image kopieren
+COPY rootfs/frontend/build /frontend/build
 
-# Build React-Frontend
-WORKDIR /frontend
-RUN npm install && npm run build
 WORKDIR /
-
 CMD ["node", "/server.js"] 
