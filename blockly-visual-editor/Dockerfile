@@ -36,4 +36,6 @@ LABEL \
 COPY rootfs/frontend/build /frontend/build
 
 WORKDIR /
+RUN npm install --production
+
 CMD ["node", "/server.js"] 
