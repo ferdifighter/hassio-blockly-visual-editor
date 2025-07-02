@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Blockly Visual Editor - Home Assistant</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="https://unpkg.com/blockly/blockly.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <h1>Blockly Visual Editor</h1>
+            <div class="header-controls">
+                <button id="saveBtn" class="btn btn-primary">Speichern</button>
+                <button id="loadBtn" class="btn btn-secondary">Laden</button>
+                <button id="exportBtn" class="btn btn-secondary">Exportieren</button>
+            </div>
+        </header>
+        
+        <main class="main-content">
+            <div class="sidebar">
+                <div class="sidebar-section">
+                    <h3>Home Assistant Entities</h3>
+                    <div id="entitiesList" class="entities-list">
+                        <div class="loading">Lade Entities...</div>
+                    </div>
+                </div>
+                
+                <div class="sidebar-section">
+                    <h3>Verfügbare Automatisierungen</h3>
+                    <div id="automationsList" class="automations-list">
+                        <div class="loading">Lade Automatisierungen...</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="editor-area">
+                <div id="blocklyDiv" class="blockly-container"></div>
+            </div>
+        </main>
+        
+        <div class="status-bar">
+            <span id="statusText">Bereit</span>
+            <span id="connectionStatus" class="connection-status">Verbunden</span>
+        </div>
+    </div>
+    
+    <script src="app.js"></script>
+</body>
+</html> 
