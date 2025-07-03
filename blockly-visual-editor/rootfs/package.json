@@ -1,6 +1,6 @@
 {
   "name": "blockly-visual-editor",
-  "version": "1.0.0",
+  "version": "0.2.2",
   "description": "Ein visueller Editor für Blockly-basierte Automatisierungen in Home Assistant",
   "main": "server.js",
   "scripts": {
