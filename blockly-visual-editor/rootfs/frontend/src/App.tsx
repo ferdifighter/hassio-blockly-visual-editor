@@ -13,12 +13,14 @@ const layoutModel: IJsonModel = {
     {
       type: 'border',
       location: 'left' as IBorderLocation,
+      size: 300,
       children: [
         {
           type: 'tab',
           name: 'Scripts',
           component: 'Sidebar',
-          enableClose: false
+          enableClose: false,
+          enableDrag: false
         }
       ]
     },
