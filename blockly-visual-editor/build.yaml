@@ -7,4 +7,4 @@ build_from:
   i386: ghcr.io/hassio-addons/base/i386:12.2.2
 labels:
   io.hass.type: addon
-  io.hass.version: "0.2.5" 
+  io.hass.version: "0.2.6" 
