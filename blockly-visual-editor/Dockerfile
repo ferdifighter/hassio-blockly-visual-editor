@@ -32,9 +32,12 @@ LABEL \
     io.hass.version="${BUILD_VERSION}" \
     maintainer="Franck Nijhof <frenck@addons.community>"
 
-# React-Frontend Build ins Image kopieren
-COPY rootfs/frontend/build /frontend/build
+# Frontend bauen
+WORKDIR /frontend
+RUN npm ci --only=production
+RUN npm run build
 
+# Zurück zum Root-Verzeichnis
 WORKDIR /
 RUN npm install --production
 
