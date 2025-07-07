@@ -13,6 +13,8 @@ RUN \
 
 # Copy root filesystem
 COPY rootfs /
+# Frontend-Build lokal erzeugen und nur das Build-Verzeichnis kopieren
+COPY rootfs/frontend/build /frontend/build
 
 # Build arguments
 ARG BUILD_ARCH
@@ -32,12 +34,6 @@ LABEL \
     io.hass.version="${BUILD_VERSION}" \
     maintainer="Franck Nijhof <frenck@addons.community>"
 
-# Frontend bauen (inkl. devDependencies)
-WORKDIR /frontend
-RUN npm ci
-RUN npm run build
-
-# Backend-Dependencies (nur production)
 WORKDIR /
 RUN npm install --production
 

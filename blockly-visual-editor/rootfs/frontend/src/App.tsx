@@ -5,8 +5,9 @@ import DebugPanel from './components/DebugPanel/DebugPanel';
 import ScriptHeader from './components/ScriptHeader/ScriptHeader';
 import Toolbar from './components/Toolbar/Toolbar';
 import { DockingLayout, DockingLayoutConfig, DockingPanelConfig } from '@ferdifighter/react-docking-layout';
-import '@ferdifighter/react-docking-layout/styles.css';
-import '@ferdifighter/react-docking-layout/themes/dark.theme.css';
+import '@ferdifighter/react-docking-layout/dist/styles.css';
+import '@ferdifighter/react-docking-layout/dist/themes/dark.theme.css';
+import '@ferdifighter/react-docking-layout/dist/themes/light.theme.css';
 import './App.css';
 
 const App: React.FC = () => {
