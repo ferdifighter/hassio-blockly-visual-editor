@@ -32,12 +32,12 @@ LABEL \
     io.hass.version="${BUILD_VERSION}" \
     maintainer="Franck Nijhof <frenck@addons.community>"
 
-# Frontend bauen
+# Frontend bauen (inkl. devDependencies)
 WORKDIR /frontend
-RUN npm ci --only=production
+RUN npm ci
 RUN npm run build
 
-# Zurück zum Root-Verzeichnis
+# Backend-Dependencies (nur production)
 WORKDIR /
 RUN npm install --production
 
