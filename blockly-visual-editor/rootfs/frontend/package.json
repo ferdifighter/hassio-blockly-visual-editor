@@ -7,7 +7,7 @@
     "@blockly/theme-dark": "^8.0.1",
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.1",
-    "@ferdifighter/react-docking-layout": "^0.2.3",
+    "@ferdifighter/react-docking-layout": "^0.2.4",
     "@mui/icons-material": "^7.2.0",
     "@mui/material": "^7.2.0",
     "@testing-library/dom": "^10.4.0",

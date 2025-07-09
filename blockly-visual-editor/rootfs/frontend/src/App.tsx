@@ -3,6 +3,7 @@ import { DockingLayout, DockingLayoutConfig, DockingPanelConfig } from '@ferdifi
 import "@ferdifighter/react-docking-layout/dist/styles.css";
 import "@ferdifighter/react-docking-layout/dist/themes/dark.theme.css";
 import "@ferdifighter/react-docking-layout/dist/themes/light.theme.css";
+import BlocklyEditor from './components/BlocklyEditor/BlocklyEditor';
 
 
 const PANEL_IDS = ['sidebar', 'toolbar', 'editor', 'debug', 'output']
@@ -76,7 +77,7 @@ const App: React.FC = () => {
             canPin: false,
             hideHeader: true,
             resizable: false,
-            size: 300,
+            size: 150,
             content: null, // Wird unten gesetzt
           },
           {
@@ -86,11 +87,7 @@ const App: React.FC = () => {
             canPin: false,
             hideHeader: true,
             content: (
-              <div>
-                <h2>Willkommen zur React Docking Layout Demo</h2>
-                <p>Dies ist der zentrale Editorbereich.</p>
-                <p>Sie können Panels über die Toolbox ein- und ausblenden!</p>
-              </div>
+              <BlocklyEditor />
             ),
           },
           {

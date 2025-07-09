@@ -51,6 +51,10 @@
   background-color: #1a1a1a;
 }
 
+.docking-panel[data-panel-id="editor"] .panel-content {
+  padding: 20px !important;
+} 
+
 
 
 
