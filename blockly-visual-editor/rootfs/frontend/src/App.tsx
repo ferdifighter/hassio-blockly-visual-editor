@@ -38,7 +38,7 @@ const App: React.FC = () => {
         panels: filterPanels([
           {
             id: 'explorer',
-            title: 'Explorer 1',
+            title: 'Explorer',
             closable: false,
             pinned: true,
             content: (
@@ -86,6 +86,7 @@ const App: React.FC = () => {
             closable: false,
             canPin: false,
             hideHeader: true,
+            contentPadding: 0, // Padding explizit entfernen
             content: (
               <BlocklyEditor />
             ),

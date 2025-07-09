@@ -53,7 +53,7 @@
 
 /* Editor Panel - Padding entfernen (wie in der Demo-App) */
 .docking-panel[data-panel-id="editor"] .panel-content {
-  padding: 0px !important;
+  --panel-content-padding: 0px !important;
 } 
 
 
