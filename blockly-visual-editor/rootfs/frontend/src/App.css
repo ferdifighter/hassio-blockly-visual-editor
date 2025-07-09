@@ -52,7 +52,7 @@
 }
 
 .docking-panel[data-panel-id="editor"] .panel-content {
-  padding: 20px !important;
+  padding: 0px !important;
 } 
 
 

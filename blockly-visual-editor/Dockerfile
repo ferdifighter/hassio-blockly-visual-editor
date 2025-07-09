@@ -11,10 +11,11 @@ RUN \
         npm \
         git
 
-# Copy root filesystem
-COPY rootfs /
-# Frontend-Build lokal erzeugen und nur das Build-Verzeichnis kopieren
+# Frontend-Build zuerst kopieren (wird nicht überschrieben)
 COPY rootfs/frontend/build /frontend/build
+
+# Dann den Rest der rootfs kopieren
+COPY rootfs /
 
 # Build arguments
 ARG BUILD_ARCH

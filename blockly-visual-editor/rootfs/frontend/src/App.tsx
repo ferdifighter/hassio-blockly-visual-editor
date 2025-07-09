@@ -38,7 +38,7 @@ const App: React.FC = () => {
         panels: filterPanels([
           {
             id: 'explorer',
-            title: 'Explorer',
+            title: 'Explorer 1',
             closable: false,
             pinned: true,
             content: (
