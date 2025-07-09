@@ -33,22 +33,34 @@ const App: React.FC = () => {
     columns: [
       {
         id: 'left',
-        width: 300,
+        width: 220,
         panels: filterPanels([
           {
-            id: 'sidebar',
-            title: 'Scripts',
+            id: 'explorer',
+            title: 'Explorer',
             closable: false,
             pinned: true,
             content: (
               <div>
-                <h3>Scripts</h3>
+                <h3>Navigation</h3>
                 <ul style={{ listStyle: 'none', padding: 0 }}>
-                  <li>📄 automation.yaml</li>
-                  <li>📄 scripts.yaml</li>
-                  <li>📁 Custom Scripts</li>
-                  <li>➕ Neues Script</li>
+                  <li>🏠 Dashboard</li>
+                  <li>📁 Projekte</li>
+                  <li>👥 Benutzer</li>
+                  <li>⚙️ Einstellungen</li>
                 </ul>
+              </div>
+            ),
+          },
+          {
+            id: 'search',
+            title: 'Suche',
+            closable: false,
+            pinned: true,
+            content: (
+              <div>
+                <h3>Suche</h3>
+                <input type="text" placeholder="Suchen..." style={{ width: '100%' }} />
               </div>
             ),
           },
@@ -58,41 +70,26 @@ const App: React.FC = () => {
         id: 'center',
         panels: filterPanels([
           {
-            id: 'toolbar',
-            title: 'Toolbar',
+            id: 'toolbox',
+            title: 'Toolbox',
             closable: false,
             canPin: false,
             hideHeader: true,
             resizable: false,
-            size: 60,
+            size: 300,
             content: null, // Wird unten gesetzt
           },
           {
             id: 'editor',
-            title: 'Blockly Editor',
+            title: 'Editor',
             closable: false,
             canPin: false,
             hideHeader: true,
             content: (
               <div>
-                <h2>Blockly Visual Editor</h2>
-                <p>Hier wird der Blockly Editor angezeigt.</p>
-                <p>Sie können Panels über die Toolbar ein- und ausblenden!</p>
-              </div>
-            ),
-          },
-          {
-            id: 'debug',
-            title: 'Debug Panel',
-            closable: true,
-            position: 'bottom',
-            size: 200,
-            resizable: true,
-            content: (
-              <div style={{ fontFamily: 'monospace', fontSize: '12px' }}>
-                <div>🔍 Debug Panel</div>
-                <div>📊 Variablen: 0</div>
-                <div>⚡ Ausführung: Bereit</div>
+                <h2>Willkommen zur React Docking Layout Demo</h2>
+                <p>Dies ist der zentrale Editorbereich.</p>
+                <p>Sie können Panels über die Toolbox ein- und ausblenden!</p>
               </div>
             ),
           },
@@ -103,16 +100,69 @@ const App: React.FC = () => {
             position: 'bottom',
             size: 200,
             resizable: true,
+            pinned: true,
+            content: (
+              <div style={{ fontFamily: 'monospace', fontSize: '12px' }}>
+                <div>✅ Anwendung gestartet</div>
+                <div>📦 Dependencies geladen</div>
+                <div>🚀 React Docking Layout bereit</div>
+              </div>
+            ),
+          },
+          {
+            id: 'terminal',
+            title: 'Terminal',
+            closable: true,
+            position: 'bottom',
+            size: 200,
+            resizable: true,
+            pinned: false,
             content: (
               <div style={{ fontFamily: 'monospace', fontSize: '12px' }} className="panel-content">
-                <div>📤 Output Panel</div>
-                <div>📋 Logs werden hier angezeigt</div>
+                <div>user@host:~$ echo Hallo Welt</div>
+                <div>Hallo Welt</div>
+              </div>
+            ),
+          },
+        ]),
+      },
+      {
+        id: 'right',
+        width: 260,
+        panels: filterPanels([
+          {
+            id: 'outline',
+            title: 'Outline',
+            closable: true,
+            pinned: true,
+            content: (
+              <div>
+                <h3>Outline</h3>
+                <ul>
+                  <li>Section 1</li>
+                  <li>Section 2</li>
+                  <li>Section 3</li>
+                </ul>
+              </div>
+            ),
+          },
+          {
+            id: 'problems',
+            title: 'Problems',
+            closable: true,
+            pinned: true,
+            content: (
+              <div>
+                <h3>Problems</h3>
+                <div style={{ color: '#ff6b6b' }}>❌ 2 Fehler gefunden</div>
+                <div style={{ color: '#ff6b6b' }}>⚠️ 1 Warnung</div>
               </div>
             ),
           },
         ]),
       },
     ],
+    closedPanels,
     theme,
   })
 

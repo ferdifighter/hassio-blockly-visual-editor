@@ -1,12 +1,12 @@
 {
   "name": "frontend",
-  "version": "0.2.8",
+  "version": "0.2.9",
   "private": true,
   "dependencies": {
     "@blockly/theme-dark": "^8.0.1",
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.1",
-    "@ferdifighter/react-docking-layout": "^0.2.1",
+    "@ferdifighter/react-docking-layout": "^0.2.3",
     "@mui/icons-material": "^7.2.0",
     "@mui/material": "^7.2.0",
     "@testing-library/dom": "^10.4.0",
