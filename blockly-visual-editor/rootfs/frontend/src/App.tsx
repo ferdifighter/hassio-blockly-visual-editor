@@ -1,35 +1,30 @@
-import React, { useState } from 'react'
-import { DockingLayout, DockingLayoutConfig, DockingPanelConfig } from '@ferdifighter/react-docking-layout'
-import "@ferdifighter/react-docking-layout/dist/styles.css";
-import "@ferdifighter/react-docking-layout/dist/themes/dark.theme.css";
-import "@ferdifighter/react-docking-layout/dist/themes/light.theme.css";
-import BlocklyEditor from './components/BlocklyEditor/BlocklyEditor';
+import React, { useState, useMemo } from 'react';
+import { DockingLayout, DockingLayoutConfig, DockingPanelConfig } from '@ferdifighter/react-docking-layout';
+import '@ferdifighter/react-docking-layout/dist/styles.css';
+import '@ferdifighter/react-docking-layout/dist/themes/dark.theme.css';
+import '@ferdifighter/react-docking-layout/dist/themes/light.theme.css';
+import './App.css';
 
-
-const PANEL_IDS = ['sidebar', 'toolbar', 'editor', 'debug', 'output']
+const PANEL_IDS = ['explorer', 'search', 'toolbox', 'editor', 'console', 'outline', 'problems'];
 
 const App: React.FC = () => {
-  // State für geschlossene Panels
-  const [closedPanels, setClosedPanels] = useState<string[]>([])
-  const [theme, setTheme] = useState<'light' | 'dark' | 'auto'>('dark')
+  const [closedPanels, setClosedPanels] = useState<string[]>([]);
+  const [theme, setTheme] = useState<'light' | 'dark' | 'auto'>('auto');
 
-  // Panels aus der Konfiguration extrahieren (nur schließbare, keine Toolbar)
   const getClosablePanels = (config: DockingLayoutConfig): { id: string; title: string }[] => {
-    const result: { id: string; title: string }[] = []
+    const result: { id: string; title: string }[] = [];
     config.columns.forEach(col => {
       col.panels.forEach(panel => {
-        if (panel.id !== 'toolbar' && panel.closable !== false) {
-          result.push({ id: panel.id, title: panel.title })
+        if (panel.id !== 'toolbox' && panel.closable !== false) {
+          result.push({ id: panel.id, title: panel.title });
         }
-      })
-    })
-    return result
-  }
+      });
+    });
+    return result;
+  };
 
-  // Panels filtern je nach Sichtbarkeit
-  const filterPanels = (panels: DockingPanelConfig[]) => panels.filter(p => !closedPanels.includes(p.id))
+  const filterPanels = (panels: DockingPanelConfig[]) => panels.filter(p => !closedPanels.includes(p.id));
 
-  // Die Panel-Konfiguration
   const [layoutConfig, setLayoutConfig] = useState<DockingLayoutConfig>({
     columns: [
       {
@@ -86,9 +81,13 @@ const App: React.FC = () => {
             closable: false,
             canPin: false,
             hideHeader: true,
-            contentPadding: 0, // Padding explizit entfernen
+            contentPadding: 0,
             content: (
-              <BlocklyEditor />
+              <div>
+                <h2>Willkommen zur React Docking Layout Demo</h2>
+                <p>Dies ist der zentrale Editorbereich.</p>
+                <p>Sie können Panels über die Toolbox ein- und ausblenden!</p>
+              </div>
             ),
           },
           {
@@ -115,8 +114,9 @@ const App: React.FC = () => {
             size: 200,
             resizable: true,
             pinned: false,
+            contentPadding: 8, // Weniger Padding für Terminal
             content: (
-              <div style={{ fontFamily: 'monospace', fontSize: '12px' }} className="panel-content">
+              <div style={{ fontFamily: 'monospace', fontSize: '12px' }}>
                 <div>user@host:~$ echo Hallo Welt</div>
                 <div>Hallo Welt</div>
               </div>
@@ -133,6 +133,7 @@ const App: React.FC = () => {
             title: 'Outline',
             closable: true,
             pinned: true,
+            contentPadding: 16, // Mehr Padding für Outline
             content: (
               <div>
                 <h3>Outline</h3>
@@ -162,14 +163,13 @@ const App: React.FC = () => {
     ],
     closedPanels,
     theme,
-  })
+  });
 
-  // Toolbar-Content dynamisch setzen (nachdem layoutConfig initialisiert ist)
-  const closablePanels = getClosablePanels(layoutConfig)
+  const closablePanels = getClosablePanels(layoutConfig);
   layoutConfig.columns[1].panels[0].content = (
     <div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 8 }}>
-        <h2 style={{ margin: 0 }}>Blockly Editor</h2>
+        <h2 style={{ margin: 0 }}>Toolbox</h2>
         <div style={{ marginLeft: 'auto' }}>
           <label style={{ fontSize: 13, fontWeight: 500 }}>
             Theme:
@@ -204,7 +204,7 @@ const App: React.FC = () => {
                     e.target.checked
                       ? prev.filter(id => id !== panel.id)
                       : [...prev, panel.id]
-                  )
+                  );
                 }}
                 style={{ marginRight: 6 }}
               />
@@ -214,43 +214,42 @@ const App: React.FC = () => {
         </div>
       </div>
       <p style={{ marginTop: 16, color: '#888', fontSize: 12 }}>
-        Die Toolbar kann nicht geschlossen werden.
+        Die Toolbox kann nicht geschlossen werden.
       </p>
     </div>
-  )
+  );
 
   const handleLayoutChange = (newConfig: DockingLayoutConfig) => {
-    setLayoutConfig(newConfig)
-  }
+    setLayoutConfig(newConfig);
+  };
 
   const handlePanelClose = (panelId: string) => {
-    setClosedPanels(prev => prev.includes(panelId) ? prev : [...prev, panelId])
-  }
+    setClosedPanels(prev => prev.includes(panelId) ? prev : [...prev, panelId]);
+  };
 
-  // Theme-Klasse am Body setzen
   React.useEffect(() => {
-    const root = document.body
-    root.classList.remove('theme-light', 'theme-dark')
+    const root = document.body;
+    root.classList.remove('theme-light', 'theme-dark');
     if (theme === 'auto') {
-      const mq = window.matchMedia('(prefers-color-scheme: dark)')
-      root.classList.add(mq.matches ? 'theme-dark' : 'theme-light')
+      const mq = window.matchMedia('(prefers-color-scheme: dark)');
+      root.classList.add(mq.matches ? 'theme-dark' : 'theme-light');
     } else {
-      root.classList.add(`theme-${theme}`)
+      root.classList.add(`theme-${theme}`);
     }
-  }, [theme])
+  }, [theme]);
 
   return (
     <DockingLayout
       config={layoutConfig}
       onLayoutChange={handleLayoutChange}
-      closedPanels={closedPanels}
       onPanelClose={handlePanelClose}
+      closedPanels={closedPanels}
       style={{
         height: '100vh',
         width: '100vw',
       }}
     />
-  )
-}
+  );
+};
 
-export default App
+export default App;
