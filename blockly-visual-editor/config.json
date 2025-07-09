@@ -3,6 +3,7 @@
   "version": "0.2.9",
   "slug": "blockly-visual-editor",
   "description": "Ein visueller Editor für Blockly-basierte Automatisierungen in Home Assistant",
+  "author": "FerdiFighter",
   "arch": [
     "armhf",
     "armv7",

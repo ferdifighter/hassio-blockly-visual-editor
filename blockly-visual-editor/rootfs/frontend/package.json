@@ -2,6 +2,7 @@
   "name": "frontend",
   "version": "0.2.9",
   "private": true,
+  "author": "FerdiFighter",
   "dependencies": {
     "@blockly/theme-dark": "^8.0.1",
     "@emotion/react": "^11.14.0",
