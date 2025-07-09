@@ -51,17 +51,9 @@
   background-color: #1a1a1a;
 }
 
-/* Editor Panel - Padding entfernen */
-.docking-layout .docking-panel[data-panel-id="editor"] .panel-content {
-  padding: 0 !important;
-  margin: 0 !important;
-}
-
-/* Alternative: Noch spezifischer */
-.docking-layout .docking-panel[data-panel-id="editor"] .panel-content,
-.docking-layout .docking-panel[data-panel-id="editor"] > div {
-  padding: 0 !important;
-  margin: 0 !important;
+/* Editor Panel - Padding entfernen (wie in der Demo-App) */
+.docking-panel[data-panel-id="editor"] .panel-content {
+  padding: 0px !important;
 } 
 
 
