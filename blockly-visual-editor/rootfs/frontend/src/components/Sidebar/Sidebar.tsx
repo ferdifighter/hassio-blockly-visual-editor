@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
-import TreeView, { flattenTree } from 'react-accessible-treeview';
+import { Tree } from 'react-arborist';
 import { FaFolderPlus, FaFile, FaArrowUp, FaArrowDown, FaRegFolder, FaRegFolderOpen, FaPen, FaTrash, FaPlay, FaPause, FaFolderOpen, FaFolderClosed } from 'react-icons/fa6';
 import './Sidebar.css';
 import { DndProvider, useDrag, useDrop } from 'react-dnd';
@@ -116,23 +116,59 @@ const Sidebar: React.FC<SidebarProps> = ({ onSelectionChange }) => {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
+  // Hilfsfunktion für Ingress-kompatible API-URLs
+  const getApiUrl = (endpoint: string) => {
+    const base = window.location.pathname.endsWith('/') ? window.location.pathname : window.location.pathname + '/';
+    return `${base}${endpoint.replace(/^\//, '')}`;
+  };
+
   // Tree-Daten beim Start laden
   useEffect(() => {
-    fetch('http://localhost:5000/api/scripts')
+    fetch(getApiUrl('api/scripts'))
       .then(res => res.json())
       .then(data => {
         if (!data || typeof data !== 'object' || !Array.isArray(data.children)) {
-          // Fallback auf leeren Tree
-          setTreeObj({ name: '', children: [] });
-          setTreeData([]);
+          // Fallback auf leeren Tree mit Root-Ordner
+          const rootTree = { 
+            name: 'Automatisierungen', 
+            type: 'folder',
+            id: 'root',
+            children: [] 
+          };
+          setTreeObj(rootTree);
+          setTreeData(flattenTreeWithType(rootTree));
+          setExpandedIds(['root']);
         } else {
-          setTreeObj(data);
-          setTreeData(flattenTreeWithType(data));
+          // Prüfe, ob bereits ein Root-Ordner vorhanden ist
+          if (data.id === 'root' && data.type === 'folder') {
+            setTreeObj(data);
+            setTreeData(flattenTreeWithType(data));
+            setExpandedIds(['root']);
+          } else {
+            // Erstelle Root-Ordner und verschiebe alle bestehenden Elemente hinein
+            const rootTree = {
+              name: 'Automatisierungen',
+              type: 'folder',
+              id: 'root',
+              children: Array.isArray(data.children) ? data.children : [data]
+            };
+            setTreeObj(rootTree);
+            setTreeData(flattenTreeWithType(rootTree));
+            setExpandedIds(['root']);
+          }
         }
       })
       .catch(() => {
-        setTreeObj({ name: '', children: [] });
-        setTreeData([]);
+        // Fallback auf leeren Tree mit Root-Ordner
+        const rootTree = { 
+          name: 'Automatisierungen', 
+          type: 'folder',
+          id: 'root',
+          children: [] 
+        };
+        setTreeObj(rootTree);
+        setTreeData(flattenTreeWithType(rootTree));
+        setExpandedIds(['root']);
       });
   }, []);
 
@@ -163,7 +199,9 @@ const Sidebar: React.FC<SidebarProps> = ({ onSelectionChange }) => {
     const newId = 'script_' + Math.random().toString(36).substr(2, 9);
     const newScript = { name: '', type: 'script', id: newId };
     let updatedTree;
-    if (selectedId) {
+    // Prüfe, ob der ausgewählte Knoten ein Ordner ist
+    const selectedNode = treeData.find((n: any) => n.id === selectedId);
+    if (selectedId && selectedNode && selectedNode.type === 'folder') {
       // Ziel-Ordner suchen
       const addToFolder = (node: any): any => {
         if (node.id === selectedId && node.type === 'folder') {
@@ -176,10 +214,17 @@ const Sidebar: React.FC<SidebarProps> = ({ onSelectionChange }) => {
       };
       updatedTree = addToFolder(treeObj);
     } else {
-      updatedTree = {
-        ...treeObj,
-        children: [...(treeObj.children || []), newScript]
+      // Kein Ordner ausgewählt → im Root-Ordner anlegen
+      const addToRoot = (node: any): any => {
+        if (node.id === 'root') {
+          return { ...node, children: [...(node.children || []), newScript] };
+        }
+        if (node.children) {
+          return { ...node, children: node.children.map(addToRoot) };
+        }
+        return node;
       };
+      updatedTree = addToRoot(treeObj);
     }
     setTreeObj(updatedTree);
     setTreeData(flattenTreeWithType(updatedTree));
@@ -194,7 +239,9 @@ const Sidebar: React.FC<SidebarProps> = ({ onSelectionChange }) => {
     const newId = generateId();
     const newFolder = { name: '', type: 'folder', id: newId, children: [] };
     let updatedTree;
-    if (selectedId) {
+    // Prüfe, ob der ausgewählte Knoten ein Ordner ist
+    const selectedNode = treeData.find((n: any) => n.id === selectedId);
+    if (selectedId && selectedNode && selectedNode.type === 'folder') {
       // Ziel-Ordner suchen
       const addToFolder = (node: any): any => {
         if (node.id === selectedId && node.type === 'folder') {
@@ -207,10 +254,17 @@ const Sidebar: React.FC<SidebarProps> = ({ onSelectionChange }) => {
       };
       updatedTree = addToFolder(treeObj);
     } else {
-      updatedTree = {
-        ...treeObj,
-        children: [...(treeObj.children || []), newFolder]
+      // Kein Ordner ausgewählt → im Root-Ordner anlegen
+      const addToRoot = (node: any): any => {
+        if (node.id === 'root') {
+          return { ...node, children: [...(node.children || []), newFolder] };
+        }
+        if (node.children) {
+          return { ...node, children: node.children.map(addToRoot) };
+        }
+        return node;
       };
+      updatedTree = addToRoot(treeObj);
     }
     setTreeObj(updatedTree);
     setTreeData(flattenTreeWithType(updatedTree));
@@ -223,8 +277,9 @@ const Sidebar: React.FC<SidebarProps> = ({ onSelectionChange }) => {
   // Hilfsfunktion: Eindeutigen Standardnamen generieren
   const getDefaultFolderName = () => {
     const base = 'Neuer Ordner';
+    const rootChildren = treeObj?.children || [];
     const names = new Set(
-      (treeObj?.children || []).filter((c: any) => c.type === 'folder').map((c: any) => c.name)
+      rootChildren.filter((c: any) => c.type === 'folder').map((c: any) => c.name)
     );
     if (!names.has(base)) return base;
     let i = 2;
@@ -235,8 +290,9 @@ const Sidebar: React.FC<SidebarProps> = ({ onSelectionChange }) => {
   // Hilfsfunktion: Eindeutigen Standardnamen für Script generieren
   const getDefaultScriptName = () => {
     const base = 'Neues Script';
+    const rootChildren = treeObj?.children || [];
     const names = new Set(
-      (treeObj?.children || []).filter((c: any) => c.type !== 'folder').map((c: any) => c.name)
+      rootChildren.filter((c: any) => c.type !== 'folder').map((c: any) => c.name)
     );
     if (!names.has(base)) return base;
     let i = 2;
@@ -268,14 +324,14 @@ const Sidebar: React.FC<SidebarProps> = ({ onSelectionChange }) => {
     setEditingId(null);
     setEditingValue('');
     // Speichern im Backend
-    fetch('http://localhost:5000/api/scripts', {
+    fetch(getApiUrl('api/scripts'), {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(updatedTree)
     })
       .then(res => res.ok && res.json())
       .then(() => {
-        fetch('http://localhost:5000/api/scripts')
+        fetch(getApiUrl('api/scripts'))
           .then(res => res.json())
           .then(data => {
             setTreeObj(data);
@@ -316,14 +372,14 @@ const Sidebar: React.FC<SidebarProps> = ({ onSelectionChange }) => {
       setEditingValue('');
     }
     setDeleteTarget(null);
-    fetch('http://localhost:5000/api/scripts', {
+    fetch(getApiUrl('api/scripts'), {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(updatedTree)
     })
       .then(res => res.ok && res.json())
       .then(() => {
-        fetch('http://localhost:5000/api/scripts')
+        fetch(getApiUrl('api/scripts'))
           .then(res => res.json())
           .then(data => {
             setTreeObj(data);
@@ -387,14 +443,14 @@ const Sidebar: React.FC<SidebarProps> = ({ onSelectionChange }) => {
     setTreeObj(newTree);
     setTreeData(flattenTreeWithType(newTree));
     // Backend speichern
-    fetch('http://localhost:5000/api/scripts', {
+    fetch(getApiUrl('api/scripts'), {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(newTree)
     })
       .then(res => res.ok && res.json())
       .then(() => {
-        fetch('http://localhost:5000/api/scripts')
+        fetch(getApiUrl('api/scripts'))
           .then(res => res.json())
           .then(data => {
             setTreeObj(data);
@@ -449,14 +505,14 @@ const Sidebar: React.FC<SidebarProps> = ({ onSelectionChange }) => {
     setTreeObj(newTree);
     setTreeData(flattenTreeWithType(newTree));
     // Backend speichern
-    fetch('http://localhost:5000/api/scripts', {
+    fetch(getApiUrl('api/scripts'), {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(newTree)
     })
       .then(res => res.ok && res.json())
       .then(() => {
-        fetch('http://localhost:5000/api/scripts')
+        fetch(getApiUrl('api/scripts'))
           .then(res => res.json())
           .then(data => {
             setTreeObj(data);
@@ -475,14 +531,14 @@ const Sidebar: React.FC<SidebarProps> = ({ onSelectionChange }) => {
     setTreeData(flattenTreeWithType(updatedTree));
     
     // Backend speichern
-    fetch('http://localhost:5000/api/scripts', {
+    fetch(getApiUrl('api/scripts'), {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(updatedTree)
     })
       .then(res => res.ok && res.json())
       .then(() => {
-        fetch('http://localhost:5000/api/scripts')
+        fetch(getApiUrl('api/scripts'))
           .then(res => res.json())
           .then(data => {
             setTreeObj(data);
@@ -504,6 +560,35 @@ const Sidebar: React.FC<SidebarProps> = ({ onSelectionChange }) => {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [folders, currentFolderId, currentScriptName, moveScriptToFolder, renameScript]);
+
+  // NodeRenderer für react-arborist
+  const NodeRenderer = (props: any) => {
+    const { node, style, dragHandle } = props;
+    return (
+      <div
+        style={{
+          ...style,
+          display: 'flex',
+          alignItems: 'center',
+          gap: 8,
+          background: selectedId === node.id ? '#2a4155' : undefined,
+          borderRadius: selectedId === node.id ? 4 : undefined,
+          fontWeight: node.id === 'root' ? 'bold' : undefined,
+          paddingLeft: 8 + 16 * (node.level - 1),
+          cursor: 'pointer',
+        }}
+        ref={dragHandle}
+        onClick={() => setSelectedId(node.id)}
+      >
+        {node.isLeaf ? (
+          <FaFileIcon color="#8ecae6" className="icon" />
+        ) : (
+          <FaRegFolderOpenIcon color="#f7c873" className="icon" />
+        )}
+        <span>{node.data.name}</span>
+      </div>
+    );
+  };
 
   return (
     <DndProvider backend={HTML5Backend}>
@@ -531,126 +616,21 @@ const Sidebar: React.FC<SidebarProps> = ({ onSelectionChange }) => {
           </button>
         </div>
         <div className="sidebar-tree" style={{ flex: 1, overflow: 'auto', padding: 12 }}>
-          {treeData && treeData.length > 0 ? (
-            <TreeView
-              data={treeData}
-              aria-label="Script-Explorer"
-              expandedIds={expandedIds}
-              onExpand={({ element, isExpanded }) => {
-                if (isExpanded) {
-                  setExpandedIds(prev => prev.includes(element.id) ? prev : [...prev, element.id]);
-                } else {
-                  setExpandedIds(prev => prev.filter(id => id !== element.id));
-                }
+          {treeObj ? (
+            <Tree
+              data={[treeObj]}
+              openByDefault={true}
+              width={300}
+              height={600}
+              rowHeight={32}
+              disableMultiSelection
+              onSelect={([node]: any[]) => setSelectedId(node?.id || null)}
+              onMove={({ dragIds, parentId, index }: any) => {
+                // Drag&Drop-Handler: Noch nicht implementiert, kann später ergänzt werden
               }}
-              onNodeSelect={({ element }: any) => setSelectedId(element.id)}
-              nodeRenderer={({ element, isBranch, isExpanded, getNodeProps, level }: any) => (
-                <DraggableTreeNode element={element} onDropNode={handleDropNode}>
-                  <div
-                    {...getNodeProps({
-                      onClick: (e: any) => {
-                        // Nur markieren, nicht expandieren
-                        setSelectedId(element.id);
-                      }
-                    })}
-                    style={{
-                      paddingLeft: 8 + 16 * (level - 1),
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 6,
-                      justifyContent: 'space-between',
-                      background: selectedId === element.id ? '#2a4155' : undefined,
-                      borderRadius: selectedId === element.id ? 4 : undefined,
-                    }}
-                  >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                      {element.type === 'folder'
-                        ? (
-                            isExpanded
-                              ? <FaRegFolderOpenIcon color="#f7c873" className="icon" style={{ cursor: 'pointer' }} onClick={(e: React.MouseEvent) => {
-                                  e.stopPropagation();
-                                  setExpandedIds(prev => prev.filter(id => id !== element.id));
-                                }} />
-                              : <FaRegFolderIcon color="#f7c873" className="icon" style={{ cursor: 'pointer' }} onClick={(e: React.MouseEvent) => {
-                                  e.stopPropagation();
-                                  setExpandedIds(prev => prev.includes(element.id) ? prev : [...prev, element.id]);
-                                }} />
-                          )
-                        : <FaFileIcon color="#8ecae6" className="icon" />}
-                      {editingId === element.id ? (
-                        <input
-                          ref={inputRef}
-                          key={element.id}
-                          value={editingValue}
-                          onChange={e => setEditingValue(e.target.value)}
-                          onBlur={() => saveEdit(element.id, editingValue)}
-                          onKeyDown={e => {
-                            if (e.key === 'Enter') saveEdit(element.id, editingValue);
-                            if (e.key === 'Escape') cancelEdit();
-                          }}
-                          onMouseDown={e => e.stopPropagation()}
-                          style={{
-                            fontSize: 16,
-                            fontFamily: 'monospace',
-                            background: '#333',
-                            color: '#fff',
-                            border: '1px solid #555',
-                            borderRadius: 3,
-                            padding: '2px 6px',
-                            minWidth: 40
-                          }}
-                        />
-                      ) : (
-                        <span>{element.name}</span>
-                      )}
-                    </div>
-                    {element.type === 'folder' && (
-                      <div style={{ display: 'flex', gap: 4 }}>
-                        <button
-                          title="Umbenennen"
-                          style={{ background: 'none', border: 'none', color: '#aaa', cursor: 'pointer', padding: 2 }}
-                          onClick={e => onRename(element, e)}
-                        >
-                          <FaPenIcon size={14} />
-                        </button>
-                        <button
-                          title="Löschen"
-                          style={{ background: 'none', border: 'none', color: '#aaa', cursor: 'pointer', padding: 2 }}
-                          onClick={e => onDelete(element, e)}
-                        >
-                          <FaTrashIcon size={14} />
-                        </button>
-                      </div>
-                    )}
-                    {element.type !== 'folder' && (
-                      <div style={{ display: 'flex', gap: 4 }}>
-                        <button
-                          title={runningScriptId === element.id ? 'Pause' : 'Starten'}
-                          style={{ background: 'none', border: 'none', color: runningScriptId === element.id ? '#4ecdc4' : '#aaa', cursor: 'pointer', padding: 2 }}
-                          onClick={e => onPlayPause(element, e)}
-                        >
-                          {runningScriptId === element.id ? <FaPauseIcon size={14} /> : <FaPlayIcon size={14} />}
-                        </button>
-                        <button
-                          title="Umbenennen"
-                          style={{ background: 'none', border: 'none', color: '#aaa', cursor: 'pointer', padding: 2 }}
-                          onClick={e => onRename(element, e)}
-                        >
-                          <FaPenIcon size={14} />
-                        </button>
-                        <button
-                          title="Löschen"
-                          style={{ background: 'none', border: 'none', color: '#aaa', cursor: 'pointer', padding: 2 }}
-                          onClick={e => onDelete(element, e)}
-                        >
-                          <FaTrashIcon size={14} />
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                </DraggableTreeNode>
-              )}
-            />
+            >
+              {NodeRenderer}
+            </Tree>
           ) : (
             <div style={{ color: '#888', textAlign: 'center', padding: '20px' }}>
               Keine Scripts gefunden oder Daten ungültig.

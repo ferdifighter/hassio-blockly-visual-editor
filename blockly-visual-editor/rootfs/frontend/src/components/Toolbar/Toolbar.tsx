@@ -2,8 +2,6 @@ import React, { useState, useEffect } from 'react';
 import './Toolbar.css';
 
 interface ToolbarProps {
-  theme: 'light' | 'dark' | 'auto';
-  setTheme: (theme: 'light' | 'dark' | 'auto') => void;
   closablePanels: { id: string; title: string }[];
   closedPanels: string[];
   setClosedPanels: (fn: (prev: string[]) => string[]) => void;
@@ -15,8 +13,6 @@ interface ToolbarProps {
 }
 
 const Toolbar: React.FC<ToolbarProps> = ({ 
-  theme, 
-  setTheme, 
   closablePanels, 
   closedPanels, 
   setClosedPanels, 
@@ -149,25 +145,13 @@ const Toolbar: React.FC<ToolbarProps> = ({
           )}
         </div>
         <div className="toolbar-top-right">
-          <label className="toolbar-label" style={{ marginBottom: 0 }}>
-            Theme:
-            <select
-              className="toolbar-select"
-              value={theme}
-              onChange={e => setTheme(e.target.value as any)}
-              style={{ marginLeft: 8 }}
-            >
-              <option value="light">Light</option>
-              <option value="dark">Dark</option>
-              <option value="auto">Auto</option>
-            </select>
-          </label>
+          {/* Theme-Auswahl entfernt */}
         </div>
       </div>
       <div className="toolbar-row toolbar-row-bottom-flex">
         <div className="toolbar-bottom-left">
-          <button className="toolbar-btn"><span role="img" aria-label="save">💾</span> Save</button>
-          <button className="toolbar-btn"><span role="img" aria-label="cancel">✖</span> Cancel</button>
+          <button className="toolbar-btn"><span role="img" aria-label="save">💾</span> Speichern</button>
+          <button className="toolbar-btn"><span role="img" aria-label="cancel">✖</span> Abbrechen</button>
           <button className="toolbar-btn"><span role="img" aria-label="check">✔</span> Check blocks</button>
           <button className="toolbar-btn" disabled>Show code</button>
         </div>

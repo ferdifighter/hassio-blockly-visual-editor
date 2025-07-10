@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xml xmlns="https://developers.google.com/blockly/xml" style="display: none">
+  <category name="Conditions" colour="60">
+    <block type="ha_if_state"></block>
+    <block type="ha_if_time"></block>
+    <block type="ha_if_sun"></block>
+    <block type="ha_if_template"></block>
+    <block type="ha_if_device"></block>
+  </category>
+  <category name="Logic" colour="120">
+    <block type="ha_if_and"></block>
+    <block type="ha_if_or"></block>
+    <block type="ha_if_not"></block>
+  </category>
+</xml> 

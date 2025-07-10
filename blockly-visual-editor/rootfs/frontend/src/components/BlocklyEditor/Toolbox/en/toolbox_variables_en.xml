@@ -1,0 +1,12 @@
+<category name="Variables" colour="#795548">
+  <block type="ha_set_variable">
+    <field name="NAME">counter</field>
+    <field name="VALUE">1</field>
+  </block>
+  <block type="ha_get_variable">
+    <field name="NAME">counter</field>
+  </block>
+  <block type="ha_increment_variable">
+    <field name="NAME">counter</field>
+  </block>
+</category> 

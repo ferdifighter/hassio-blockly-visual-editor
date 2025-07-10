@@ -56,6 +56,12 @@
   padding: 0px !important;
 } 
 
+.docking-layout .panel-header {
+  height: 30px;
+  max-height: 30px;
+  min-height: 30px;
+  padding: 3px 8px;
+}
 
 
 

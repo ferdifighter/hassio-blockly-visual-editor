@@ -1,0 +1,8 @@
+<category name="Dienste" colour="#FFAB19">
+  <block type="ha_call_service">
+    <field name="SERVICE">homeassistant.turn_on</field>
+  </block>
+  <block type="ha_activate_scene">
+    <field name="SCENE">szene.abend</field>
+  </block>
+</category> 

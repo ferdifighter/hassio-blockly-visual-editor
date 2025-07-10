@@ -1,0 +1,12 @@
+<category name="Benachrichtigungen" colour="#009688">
+  <block type="ha_send_push">
+    <field name="MESSAGE">Alarm ausgelöst!</field>
+  </block>
+  <block type="ha_send_tts">
+    <field name="MESSAGE">Willkommen zuhause!</field>
+  </block>
+  <block type="ha_send_email">
+    <field name="SUBJECT">Statusbericht</field>
+    <field name="BODY">Alles OK</field>
+  </block>
+</category> 

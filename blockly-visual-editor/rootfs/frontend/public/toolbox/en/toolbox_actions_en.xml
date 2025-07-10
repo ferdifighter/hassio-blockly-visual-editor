@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xml xmlns="https://developers.google.com/blockly/xml" style="display: none">
+  <category name="Actions" colour="160">
+    <block type="ha_call_service"></block>
+    <block type="ha_activate_scene"></block>
+    <block type="ha_notify"></block>
+    <block type="ha_delay"></block>
+    <block type="ha_wait_for_state"></block>
+    <block type="ha_wait_for_template"></block>
+    <block type="ha_repeat"></block>
+    <block type="ha_set_variable"></block>
+    <block type="ha_execute_template"></block>
+    <block type="ha_stop"></block>
+  </category>
+</xml> 

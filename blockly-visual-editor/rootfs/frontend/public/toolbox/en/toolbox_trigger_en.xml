@@ -1,0 +1,12 @@
+<category name="Trigger" colour="#FF6680">
+  <block type="ha_time_trigger">
+    <field name="TIME">07:00</field>
+  </block>
+  <block type="ha_state_trigger">
+    <field name="ENTITY_ID">sensor.motion</field>
+    <field name="STATE">on</field>
+  </block>
+  <block type="ha_event_trigger">
+    <field name="EVENT">button_pressed</field>
+  </block>
+</category> 

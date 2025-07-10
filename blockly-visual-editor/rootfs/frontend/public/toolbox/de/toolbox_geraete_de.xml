@@ -1,0 +1,11 @@
+<category name="Geräte" colour="#4C97FF">
+  <block type="ha_light_on">
+    <field name="ENTITY_ID">licht.wohnzimmer</field>
+  </block>
+  <block type="ha_switch_toggle">
+    <field name="ENTITY_ID">schalter.garten</field>
+  </block>
+  <block type="ha_sensor_value">
+    <field name="ENTITY_ID">sensor.temperatur</field>
+  </block>
+</category> 

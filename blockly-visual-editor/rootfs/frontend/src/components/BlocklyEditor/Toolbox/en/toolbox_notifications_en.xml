@@ -1,0 +1,12 @@
+<category name="Notifications" colour="#009688">
+  <block type="ha_send_push">
+    <field name="MESSAGE">Alarm triggered!</field>
+  </block>
+  <block type="ha_send_tts">
+    <field name="MESSAGE">Welcome home!</field>
+  </block>
+  <block type="ha_send_email">
+    <field name="SUBJECT">Status report</field>
+    <field name="BODY">All OK</field>
+  </block>
+</category> 

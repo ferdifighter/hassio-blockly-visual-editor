@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { DockingLayout, DockingLayoutConfig, DockingPanelConfig } from '@ferdifighter/react-docking-layout';
 import '@ferdifighter/react-docking-layout/dist/styles.css';
 import '@ferdifighter/react-docking-layout/dist/themes/dark.theme.css';
@@ -13,6 +13,20 @@ const PANEL_IDS = ['explorer', 'search', 'toolbox', 'editor', 'console', 'outlin
 const App: React.FC = () => {
   const [closedPanels, setClosedPanels] = useState<string[]>([]);
   const [theme, setTheme] = useState<'light' | 'dark' | 'auto'>('auto');
+
+  // Theme aus Addon-Konfiguration laden
+  useEffect(() => {
+    async function getAddonTheme() {
+      try {
+        const res = await fetch('/api/addon/config');
+        const config = await res.json();
+        return config.theme || 'auto';
+      } catch {
+        return 'auto';
+      }
+    }
+    getAddonTheme().then(setTheme);
+  }, []);
 
   // State für Toolbar-Daten aus Sidebar
   const [toolbarData, setToolbarData] = useState<{
@@ -163,8 +177,6 @@ const App: React.FC = () => {
   const closablePanels = getClosablePanels(layoutConfig);
   layoutConfig.columns[1].panels[0].content = (
     <Toolbar
-      theme={theme}
-      setTheme={setTheme}
       closablePanels={closablePanels}
       closedPanels={closedPanels}
       setClosedPanels={setClosedPanels}

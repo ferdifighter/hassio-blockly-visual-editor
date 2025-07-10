@@ -1,0 +1,110 @@
+<xml id="toolbox" style="display: none">
+  <!-- Trigger zuerst -->
+  <category name="Trigger" colour="#FF6680">
+    <!-- Inhalt aus toolbox_trigger_de.xml -->
+    <block type="ha_time_trigger">
+      <field name="TIME">07:00</field>
+    </block>
+    <block type="ha_state_trigger">
+      <field name="ENTITY_ID">sensor.bewegung</field>
+      <field name="STATE">an</field>
+    </block>
+    <block type="ha_event_trigger">
+      <field name="EVENT">button_pressed</field>
+    </block>
+  </category>
+  <!-- Bedingungen -->
+  <category name="Bedingungen" colour="#FFD600">
+    <block type="ha_if_state">
+      <field name="ENTITY_ID">sensor.temperatur</field>
+      <field name="STATE">über 20</field>
+    </block>
+    <block type="ha_if_time">
+      <field name="TIME">18:00</field>
+    </block>
+    <block type="ha_if_value">
+      <field name="ENTITY_ID">sensor.lux</field>
+      <field name="VALUE">< 100</field>
+    </block>
+  </category>
+  <!-- Aktionen -->
+  <category name="Aktionen" colour="#4CAF50">
+    <block type="ha_send_notification">
+      <field name="MESSAGE">Licht wurde eingeschaltet</field>
+    </block>
+    <block type="ha_wait">
+      <field name="SECONDS">10</field>
+    </block>
+    <block type="ha_set_variable">
+      <field name="NAME">status</field>
+      <field name="VALUE">aktiv</field>
+    </block>
+  </category>
+  <!-- Geräte -->
+  <category name="Geräte" colour="#4C97FF">
+    <block type="ha_light_on">
+      <field name="ENTITY_ID">licht.wohnzimmer</field>
+    </block>
+    <block type="ha_switch_toggle">
+      <field name="ENTITY_ID">schalter.garten</field>
+    </block>
+    <block type="ha_sensor_value">
+      <field name="ENTITY_ID">sensor.temperatur</field>
+    </block>
+  </category>
+  <!-- Dienste -->
+  <category name="Dienste" colour="#FFAB19">
+    <block type="ha_call_service">
+      <field name="SERVICE">homeassistant.turn_on</field>
+    </block>
+    <block type="ha_activate_scene">
+      <field name="SCENE">szene.abend</field>
+    </block>
+  </category>
+  <!-- Benachrichtigungen -->
+  <category name="Benachrichtigungen" colour="#009688">
+    <block type="ha_send_push">
+      <field name="MESSAGE">Alarm ausgelöst!</field>
+    </block>
+    <block type="ha_send_tts">
+      <field name="MESSAGE">Willkommen zuhause!</field>
+    </block>
+    <block type="ha_send_email">
+      <field name="SUBJECT">Statusbericht</field>
+      <field name="BODY">Alles OK</field>
+    </block>
+  </category>
+  <!-- Zeitsteuerung -->
+  <category name="Zeitsteuerung" colour="#607D8B">
+    <block type="ha_delay">
+      <field name="SECONDS">30</field>
+    </block>
+    <block type="ha_time_window">
+      <field name="START">06:00</field>
+      <field name="END">22:00</field>
+    </block>
+    <block type="ha_repeat">
+      <field name="MINUTES">5</field>
+    </block>
+  </category>
+  <!-- Variablen -->
+  <category name="Variablen" colour="#795548">
+    <block type="ha_set_variable">
+      <field name="NAME">zaehler</field>
+      <field name="VALUE">1</field>
+    </block>
+    <block type="ha_get_variable">
+      <field name="NAME">zaehler</field>
+    </block>
+    <block type="ha_increment_variable">
+      <field name="NAME">zaehler</field>
+    </block>
+  </category>
+  <!-- Logik -->
+  <category name="Logik" colour="#8E24AA">
+    <block type="controls_if"></block>
+    <block type="logic_compare"></block>
+    <block type="logic_operation"></block>
+    <block type="logic_negate"></block>
+  </category>
+</xml> 
