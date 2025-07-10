@@ -1,0 +1,29 @@
+{
+  "name": "",
+  "children": [
+    {
+      "name": "Script",
+      "type": "folder",
+      "id": "folder1",
+      "children": [
+        {
+          "name": "Beispiel Script",
+          "type": "file",
+          "id": "script1"
+        },
+        {
+          "name": "Neues Script",
+          "type": "script",
+          "id": "script_2k1wbbmrs"
+        }
+      ]
+    },
+    {
+      "name": "test",
+      "type": "folder",
+      "id": "folder_oy9ff0isq",
+      "children": []
+    }
+  ],
+  "id": "root"
+}

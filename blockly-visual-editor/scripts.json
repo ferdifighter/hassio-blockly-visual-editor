@@ -1,0 +1,23 @@
+[
+  {
+    "id": "common",
+    "name": "common",
+    "type": "folder",
+    "parent": null,
+    "children": ["script1"]
+  },
+  {
+    "id": "script1",
+    "name": "Alarmserver Triggered",
+    "type": "script",
+    "parent": "common",
+    "children": []
+  },
+  {
+    "id": "global",
+    "name": "global",
+    "type": "folder",
+    "parent": null,
+    "children": []
+  }
+] 
