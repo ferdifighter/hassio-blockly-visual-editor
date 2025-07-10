@@ -20,7 +20,14 @@ const App: React.FC = () => {
     currentFolderId: string | null;
     currentScriptName: string | null;
     moveScriptToFolder: (folderId: string) => void;
-  }>({ folders: [], currentFolderId: null, currentScriptName: null, moveScriptToFolder: () => {} });
+    renameScript: (newName: string) => void;
+  }>({ 
+    folders: [], 
+    currentFolderId: null, 
+    currentScriptName: null, 
+    moveScriptToFolder: () => {},
+    renameScript: () => {}
+  });
 
   const getClosablePanels = (config: DockingLayoutConfig): { id: string; title: string }[] => {
     const result: { id: string; title: string }[] = [];
@@ -165,6 +172,7 @@ const App: React.FC = () => {
       currentFolderId={toolbarData.currentFolderId || ''}
       onChangeFolder={toolbarData.moveScriptToFolder}
       currentScriptName={toolbarData.currentScriptName}
+      onRenameScript={toolbarData.renameScript}
     />
   );
 

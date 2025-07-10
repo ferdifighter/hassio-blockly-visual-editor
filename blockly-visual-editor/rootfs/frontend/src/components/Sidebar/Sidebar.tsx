@@ -101,6 +101,7 @@ interface SidebarProps {
     currentFolderId: string | null;
     currentScriptName: string | null;
     moveScriptToFolder: (folderId: string) => void;
+    renameScript: (newName: string) => void;
   }) => void;
 }
 const Sidebar: React.FC<SidebarProps> = ({ onSelectionChange }) => {
@@ -464,6 +465,32 @@ const Sidebar: React.FC<SidebarProps> = ({ onSelectionChange }) => {
       });
   };
 
+  // Handler: Script umbenennen
+  const renameScript = (newName: string) => {
+    if (!selectedScript || !treeObj || !newName.trim()) return;
+    
+    // Tree aktualisieren
+    const updatedTree = updateNameInTree(treeObj, selectedScript.id, newName.trim());
+    setTreeObj(updatedTree);
+    setTreeData(flattenTreeWithType(updatedTree));
+    
+    // Backend speichern
+    fetch('http://localhost:5000/api/scripts', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(updatedTree)
+    })
+      .then(res => res.ok && res.json())
+      .then(() => {
+        fetch('http://localhost:5000/api/scripts')
+          .then(res => res.json())
+          .then(data => {
+            setTreeObj(data);
+            setTreeData(flattenTreeWithType(data));
+          });
+      });
+  };
+
   // Melde die Daten an die App, wenn sich Auswahl oder Tree ändert
   useEffect(() => {
     if (onSelectionChange) {
@@ -472,10 +499,11 @@ const Sidebar: React.FC<SidebarProps> = ({ onSelectionChange }) => {
         currentFolderId,
         currentScriptName,
         moveScriptToFolder,
+        renameScript,
       });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [folders, currentFolderId, currentScriptName, moveScriptToFolder]);
+  }, [folders, currentFolderId, currentScriptName, moveScriptToFolder, renameScript]);
 
   return (
     <DndProvider backend={HTML5Backend}>
