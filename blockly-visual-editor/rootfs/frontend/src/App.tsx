@@ -4,12 +4,23 @@ import '@ferdifighter/react-docking-layout/dist/styles.css';
 import '@ferdifighter/react-docking-layout/dist/themes/dark.theme.css';
 import '@ferdifighter/react-docking-layout/dist/themes/light.theme.css';
 import './App.css';
+import BlocklyEditor from './components/BlocklyEditor/BlocklyEditor';
+import Toolbar from './components/Toolbar/Toolbar';
+import Sidebar from './components/Sidebar/Sidebar';
 
 const PANEL_IDS = ['explorer', 'search', 'toolbox', 'editor', 'console', 'outline', 'problems'];
 
 const App: React.FC = () => {
   const [closedPanels, setClosedPanels] = useState<string[]>([]);
   const [theme, setTheme] = useState<'light' | 'dark' | 'auto'>('auto');
+
+  // State für Toolbar-Daten aus Sidebar
+  const [toolbarData, setToolbarData] = useState<{
+    folders: { id: string; name: string }[];
+    currentFolderId: string | null;
+    currentScriptName: string | null;
+    moveScriptToFolder: (folderId: string) => void;
+  }>({ folders: [], currentFolderId: null, currentScriptName: null, moveScriptToFolder: () => {} });
 
   const getClosablePanels = (config: DockingLayoutConfig): { id: string; title: string }[] => {
     const result: { id: string; title: string }[] = [];
@@ -29,37 +40,18 @@ const App: React.FC = () => {
     columns: [
       {
         id: 'left',
-        width: 220,
+        width: 300,
         panels: filterPanels([
           {
             id: 'explorer',
             title: 'Explorer',
             closable: false,
             pinned: true,
+            hideHeader: true,
             content: (
-              <div>
-                <h3>Navigation</h3>
-                <ul style={{ listStyle: 'none', padding: 0 }}>
-                  <li>🏠 Dashboard</li>
-                  <li>📁 Projekte</li>
-                  <li>👥 Benutzer</li>
-                  <li>⚙️ Einstellungen</li>
-                </ul>
-              </div>
+              <Sidebar onSelectionChange={setToolbarData} />
             ),
-          },
-          {
-            id: 'search',
-            title: 'Suche',
-            closable: false,
-            pinned: true,
-            content: (
-              <div>
-                <h3>Suche</h3>
-                <input type="text" placeholder="Suchen..." style={{ width: '100%' }} />
-              </div>
-            ),
-          },
+          },     
         ]),
       },
       {
@@ -83,11 +75,7 @@ const App: React.FC = () => {
             hideHeader: true,
             contentPadding: 0,
             content: (
-              <div>
-                <h2>Willkommen zur React Docking Layout Demo</h2>
-                <p>Dies ist der zentrale Editorbereich.</p>
-                <p>Sie können Panels über die Toolbox ein- und ausblenden!</p>
-              </div>
+              <BlocklyEditor theme={theme} />
             ),
           },
           {
@@ -167,56 +155,17 @@ const App: React.FC = () => {
 
   const closablePanels = getClosablePanels(layoutConfig);
   layoutConfig.columns[1].panels[0].content = (
-    <div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 8 }}>
-        <h2 style={{ margin: 0 }}>Toolbox</h2>
-        <div style={{ marginLeft: 'auto' }}>
-          <label style={{ fontSize: 13, fontWeight: 500 }}>
-            Theme:
-            <select
-              value={theme}
-              onChange={e => setTheme(e.target.value as any)}
-              style={{ marginLeft: 8 }}
-            >
-              <option value="light">Light</option>
-              <option value="dark">Dark</option>
-              <option value="auto">Auto</option>
-            </select>
-          </label>
-        </div>
-      </div>
-      <div style={{ marginTop: 12 }}>
-        <strong>Panels ein-/ausblenden:</strong>
-        <div style={{
-          marginTop: 6,
-          display: 'flex',
-          flexWrap: 'wrap',
-          gap: '12px 16px',
-          alignItems: 'center',
-        }}>
-          {closablePanels.map(panel => (
-            <label key={panel.id} style={{ display: 'flex', alignItems: 'center', fontSize: 13 }}>
-              <input
-                type="checkbox"
-                checked={!closedPanels.includes(panel.id)}
-                onChange={e => {
-                  setClosedPanels(prev =>
-                    e.target.checked
-                      ? prev.filter(id => id !== panel.id)
-                      : [...prev, panel.id]
-                  );
-                }}
-                style={{ marginRight: 6 }}
-              />
-              {panel.title}
-            </label>
-          ))}
-        </div>
-      </div>
-      <p style={{ marginTop: 16, color: '#888', fontSize: 12 }}>
-        Die Toolbox kann nicht geschlossen werden.
-      </p>
-    </div>
+    <Toolbar
+      theme={theme}
+      setTheme={setTheme}
+      closablePanels={closablePanels}
+      closedPanels={closedPanels}
+      setClosedPanels={setClosedPanels}
+      folders={toolbarData.folders}
+      currentFolderId={toolbarData.currentFolderId || ''}
+      onChangeFolder={toolbarData.moveScriptToFolder}
+      currentScriptName={toolbarData.currentScriptName}
+    />
   );
 
   const handleLayoutChange = (newConfig: DockingLayoutConfig) => {

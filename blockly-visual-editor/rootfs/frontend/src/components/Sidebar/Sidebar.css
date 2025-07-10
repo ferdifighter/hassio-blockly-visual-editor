@@ -1,0 +1,78 @@
+/* Entfernt ALLE Listenpunkte in der TreeView, auch verschachtelt */
+.react-accessible-treeview,
+.react-accessible-treeview ul,
+.react-accessible-treeview li {
+  list-style: none !important;
+  margin-left: 0 !important;
+  padding-left: 0 !important;
+}
+
+/* Sidebar-TreeView Styles (angepasst von der Doku) */
+.sidebar-tree {
+  background: #242322;
+  font-family: monospace;
+  font-size: 16px;
+  color: white;
+  user-select: none;
+  padding: 8px 0 0 0;
+  border-radius: 0.4em;
+}
+
+.sidebar-tree .tree,
+.sidebar-tree .tree-node,
+.sidebar-tree .tree-node-group {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.sidebar-tree .tree-branch-wrapper,
+.sidebar-tree .tree-node__leaf {
+  outline: none;
+}
+
+.sidebar-tree .tree-node {
+  cursor: pointer;
+  border-radius: 4px;
+  padding: 6px 8px;
+}
+
+.sidebar-tree .tree-node:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.sidebar-tree .tree .tree-node--focused {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.sidebar-tree .tree .tree-node--selected {
+  background: #306bb0;
+}
+
+.sidebar-tree .tree-node__branch {
+  display: block;
+}
+
+.sidebar-tree .icon {
+  vertical-align: middle;
+  padding-right: 5px;
+}
+
+/* Optional: Panel Scrollbar schöner */
+.react-accessible-treeview {
+  scrollbar-width: thin;
+  scrollbar-color: #444 #222;
+}
+
+.react-accessible-treeview::-webkit-scrollbar {
+  width: 8px;
+  background: #222;
+}
+.react-accessible-treeview::-webkit-scrollbar-thumb {
+  background: #444;
+  border-radius: 4px;
+} 
+
+.docking-panel[data-panel-id="explorer"] .panel-content {
+  padding: 0px !important;
+} 
