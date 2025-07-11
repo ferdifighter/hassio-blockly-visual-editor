@@ -8,7 +8,6 @@ import BlocklyEditor from './components/BlocklyEditor/BlocklyEditor';
 import Toolbar from './components/Toolbar/Toolbar';
 import Sidebar from './components/Sidebar/Sidebar';
 
-const PANEL_IDS = ['explorer', 'search', 'toolbox', 'editor', 'console', 'outline', 'problems'];
 
 const App: React.FC = () => {
   const [closedPanels, setClosedPanels] = useState<string[]>([]);
@@ -70,7 +69,7 @@ const App: React.FC = () => {
             pinned: true,
             hideHeader: true,
             content: (
-              <Sidebar onSelectionChange={setToolbarData} />
+              <Sidebar />
             ),
           },     
         ]),

@@ -38,4 +38,11 @@ LABEL \
 WORKDIR /
 RUN npm install --production
 
-CMD ["node", "/server.js"] 
+# Toolbox-XMLs für Home Assistant bereitstellen
+RUN mkdir -p /config/www/toolbox/de /config/www/toolbox/en \
+    && cp -r /frontend/public/toolbox/de/* /config/www/toolbox/de/ \
+    && cp -r /frontend/public/toolbox/en/* /config/www/toolbox/en/
+
+COPY run.sh /
+RUN chmod a+x /run.sh
+CMD [ "/run.sh" ] 

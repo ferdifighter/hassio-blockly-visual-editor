@@ -14,22 +14,31 @@
   "startup": "application",
   "init": false,
   "ports": {
-    "3000/tcp": 3000
+    "8099/tcp": null
   },
   "map": [
+    "data:rw",
     "config:rw",
     "ssl:rw"
   ],
   "options": {
-    "log_level": "info"
+    "log_level": "info",
+    "theme": "auto",
+    "language": "system"
   },
   "schema": {
     "log_level": "list(debug|info|notice|warning|error|fatal)?",
+    "theme": "list(auto|light|dark)?",
+    "language": "list(system|de|en)?",
     "hass_api_url": "str?",
     "hass_token": "str?"
   },
   "ingress": true,
-  "ingress_port": 3000,
+  "ingress_port": 8099,
   "panel_icon": "mdi:puzzle",
-  "panel_title": "Blockly Editor"
+  "panel_title": "Blockly Editor",
+  "homeassistant_api": true,
+  "auth_api": true,
+  "ingress_stream": true,
+  "hassio_role": "admin"
 } 
