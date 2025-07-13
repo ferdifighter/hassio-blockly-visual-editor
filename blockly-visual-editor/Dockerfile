@@ -9,7 +9,8 @@ RUN \
     apk add --no-cache \
         nodejs \
         npm \
-        git
+        git \
+        bash
 
 # Frontend-Build kopieren (wird außerhalb gebaut!)
 COPY rootfs/frontend/build /frontend/build
