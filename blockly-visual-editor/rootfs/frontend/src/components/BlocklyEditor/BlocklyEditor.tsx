@@ -1,12 +1,12 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useImperativeHandle, forwardRef } from 'react';
 import * as Blockly from 'blockly';
 import DarkTheme from '@blockly/theme-dark';
 import { registerAllHomeAssistantBlocks } from './blocks';
 registerAllHomeAssistantBlocks();
 
-// Zusätzlicher Import für textToDom
-// @ts-ignore
+// Zusätzlicher Import für textToDom und domToText
 const textToDom = Blockly.utils?.xml?.textToDom;
+const domToText = Blockly.utils?.xml?.domToText;
 
 // Eigenes LightTheme mit explizitem Hintergrund
 const LightTheme = Blockly.Theme.defineTheme('light', {
@@ -21,40 +21,32 @@ const LightTheme = Blockly.Theme.defineTheme('light', {
 
 interface BlocklyEditorProps {
   theme: 'light' | 'dark' | 'auto';
+  scriptId?: string | null;
+  onSave?: () => Promise<void>;
+  onCancel?: () => void;
 }
 
-const BlocklyEditor: React.FC<BlocklyEditorProps> = ({ theme }) => {
+const BlocklyEditor = forwardRef<any, BlocklyEditorProps>(({ theme, scriptId, onSave, onCancel }, ref) => {
   const blocklyDiv = useRef<HTMLDivElement>(null);
   const workspaceRef = useRef<Blockly.WorkspaceSvg | null>(null);
   const [toolboxXml, setToolboxXml] = useState<string | null>(null);
+  const [automation, setAutomation] = useState<any>(null);
+  const [loading, setLoading] = useState(false);
+  const [scriptName, setScriptName] = useState<string>('');
+
+  // Scriptnamen aus der Automatisierung oder aus dem Workspace holen
+  useEffect(() => {
+    if (automation && automation.alias) {
+      setScriptName(automation.alias);
+    } else if (scriptId) {
+      setScriptName(scriptId);
+    }
+  }, [automation, scriptId]);
 
   // Sprache und Toolbox dynamisch bestimmen
   useEffect(() => {
-    async function getAddonLanguage() {
-      try {
-        const res = await fetch('/api/addon/config');
-        const config = await res.json();
-        return config.sprache || 'system';
-      } catch {
-        return 'system';
-      }
-    }
-    async function getSystemLanguage() {
-      try {
-        const res = await fetch('/api/config');
-        const data = await res.json();
-        return data.language && data.language.startsWith('de') ? 'de' : 'en';
-      } catch {
-        return 'en';
-      }
-    }
-    async function getEffectiveLanguage() {
-      const addonLang = await getAddonLanguage();
-      if (addonLang === 'system') {
-        return await getSystemLanguage();
-      }
-      return addonLang;
-    }
+    // Sprache statisch setzen (z.B. 'system', 'de' oder 'en')
+    const lang = 'system'; // oder 'de'/'en' als Fallback
     const fallbackToolboxXml = `
 <xml id="toolbox" style="display: none">
   <category name="Logik" colour="#8E24AA">
@@ -70,7 +62,6 @@ const BlocklyEditor: React.FC<BlocklyEditorProps> = ({ theme }) => {
 </xml>
 `;
     async function loadToolboxXml() {
-      const lang = await getEffectiveLanguage();
       const base = window.location.pathname.endsWith('/') ? window.location.pathname : window.location.pathname + '/';
       const url = `${base}toolbox/${lang}/toolbox_main.xml`;
       try {
@@ -86,6 +77,69 @@ const BlocklyEditor: React.FC<BlocklyEditorProps> = ({ theme }) => {
     }
     loadToolboxXml();
   }, []);
+
+  // Automatisierung laden, wenn scriptId sich ändert
+  useEffect(() => {
+    if (!scriptId) return;
+    setLoading(true);
+    fetch(getApiUrl(`api/automations/${scriptId}`))
+      .then(res => {
+        if (!res.ok) throw new Error('not found');
+        return res.json();
+      })
+      .then(data => {
+        setAutomation(data);
+        // Blockly-XML importieren
+        if (workspaceRef.current) {
+          workspaceRef.current.clear();
+          if (data.xml) {
+            try {
+              const dom = textToDom(data.xml);
+              Blockly.Xml.domToWorkspace(dom, workspaceRef.current);
+            } catch (e) {
+              console.warn('Fehler beim Importieren des Blockly-XML:', e);
+            }
+          }
+        }
+      })
+      .catch(() => {
+        // Noch keine Automatisierung vorhanden
+        setAutomation(null);
+        if (workspaceRef.current) workspaceRef.current.clear();
+      })
+      .finally(() => setLoading(false));
+  }, [scriptId]);
+
+  // Speichern-Logik als Funktion exportieren
+  const handleSave = async () => {
+    if (!scriptId || !workspaceRef.current) return;
+    const xmlDom = Blockly.Xml.workspaceToDom(workspaceRef.current);
+    const xmlText = domToText(xmlDom);
+    const newAutomation = {
+      ...(automation || { id: scriptId }),
+      id: scriptId,
+      alias: scriptName || scriptId,
+      xml: xmlText,
+    };
+    setLoading(true);
+    await fetch(getApiUrl(`api/automations/${scriptId}`),
+      {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newAutomation)
+      }
+    );
+    setAutomation(newAutomation);
+    setLoading(false);
+  };
+
+  // Wenn onSave gesetzt ist, übergebe handleSave
+  useEffect(() => {
+    if (onSave) {
+      onSaveRef.current = handleSave;
+    }
+  }, [onSave, handleSave]);
+  const onSaveRef = useRef<() => Promise<void>>(handleSave);
 
   // Theme-Auswahl
   const getBlocklyTheme = () => {
@@ -161,6 +215,10 @@ const BlocklyEditor: React.FC<BlocklyEditorProps> = ({ theme }) => {
     return () => observer.disconnect();
   }, []);
 
+  useImperativeHandle(ref, () => ({
+    handleSave
+  }));
+
   if (!toolboxXml) {
     return <div>Lade Blockly-Toolbox…</div>;
   }
@@ -170,6 +228,21 @@ const BlocklyEditor: React.FC<BlocklyEditorProps> = ({ theme }) => {
       <div ref={blocklyDiv} id="blocklyDiv" style={{ height: '100%', width: '100%' }} />
     </section>
   );
-};
+});
 
-export default BlocklyEditor; 
+export default BlocklyEditor;
+
+// Exportiere handleSave für die Toolbar
+export const getBlocklySaveFunction = (ref: React.RefObject<any>) => ref.current?.handleSave; 
+
+// Hilfsfunktion für API-URL (wie in Sidebar)
+const getApiUrl = (endpoint: string) => {
+  if (
+    window.location.hostname === 'localhost' ||
+    window.location.hostname === '127.0.0.1'
+  ) {
+    return `http://localhost:8099/${endpoint.replace(/^\//, '')}`;
+  }
+  const base = window.location.pathname.endsWith('/') ? window.location.pathname : window.location.pathname + '/';
+  return `${base}${endpoint.replace(/^\//, '')}`;
+}; 

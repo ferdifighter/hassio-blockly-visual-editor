@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { DockingLayout, DockingLayoutConfig, DockingPanelConfig } from '@ferdifighter/react-docking-layout';
 import '@ferdifighter/react-docking-layout/dist/styles.css';
 import '@ferdifighter/react-docking-layout/dist/themes/dark.theme.css';
@@ -10,22 +10,24 @@ import Sidebar from './components/Sidebar/Sidebar';
 
 
 const App: React.FC = () => {
-  const [closedPanels, setClosedPanels] = useState<string[]>([]);
+  const [closedPanels, setClosedPanels] = useState<string[]>(['outline', 'problems']);
   const [theme, setTheme] = useState<'light' | 'dark' | 'auto'>('auto');
+  const [selectedScriptId, setSelectedScriptId] = useState<string | null>(null);
+  const blocklyEditorRef = useRef<any>(null);
 
-  // Theme aus Addon-Konfiguration laden
-  useEffect(() => {
-    async function getAddonTheme() {
-      try {
-        const res = await fetch('/api/addon/config');
-        const config = await res.json();
-        return config.theme || 'auto';
-      } catch {
-        return 'auto';
-      }
-    }
-    getAddonTheme().then(setTheme);
-  }, []);
+  // Theme aus Addon-Konfiguration laden (entfernt, da /api/addon/config nicht existiert)
+  // useEffect(() => {
+  //   async function getAddonTheme() {
+  //     try {
+  //       const res = await fetch('/api/addon/config');
+  //       const config = await res.json();
+  //       return config.theme || 'auto';
+  //     } catch {
+  //       return 'auto';
+  //     }
+  //   }
+  //   getAddonTheme().then(setTheme);
+  // }, []);
 
   // State für Toolbar-Daten aus Sidebar
   const [toolbarData, setToolbarData] = useState<{
@@ -54,14 +56,20 @@ const App: React.FC = () => {
     return result;
   };
 
-  const filterPanels = (panels: DockingPanelConfig[]) => panels.filter(p => !closedPanels.includes(p.id));
+  // Panels, die immer als Checkbox angezeigt werden sollen
+  const allPanels = [
+    { id: 'output', title: 'Output' },
+    { id: 'terminal', title: 'Terminal' },
+    { id: 'outline', title: 'Outline' },
+    { id: 'problems', title: 'Problems' },
+  ];
 
   const [layoutConfig, setLayoutConfig] = useState<DockingLayoutConfig>({
     columns: [
       {
         id: 'left',
         width: 300,
-        panels: filterPanels([
+        panels: [
           {
             id: 'explorer',
             title: 'Explorer',
@@ -69,22 +77,36 @@ const App: React.FC = () => {
             pinned: true,
             hideHeader: true,
             content: (
-              <Sidebar />
+              <Sidebar 
+                onSelectionChange={(data) => {
+                  setToolbarData({
+                    folders: data.folders,
+                    currentFolderId: data.currentFolderId,
+                    currentScriptName: data.currentScriptName,
+                    moveScriptToFolder: data.moveScriptToFolder,
+                    renameScript: data.renameScript
+                  });
+                  // Script-Auswahl übernehmen
+                  if (data.currentScriptId) setSelectedScriptId(data.currentScriptId);
+                }}
+                onScriptSelect={setSelectedScriptId}
+                selectedScriptId={selectedScriptId}
+              />
             ),
           },     
-        ]),
+        ],
       },
       {
         id: 'center',
-        panels: filterPanels([
+        panels: [
           {
-            id: 'toolbox',
-            title: 'Toolbox',
+            id: 'toolbar',
+            title: 'Toolbar',
             closable: false,
             canPin: false,
             hideHeader: true,
             resizable: false,
-            size: 150,
+            size: 100,
             content: null, // Wird unten gesetzt
           },
           {
@@ -95,7 +117,7 @@ const App: React.FC = () => {
             hideHeader: true,
             contentPadding: 0,
             content: (
-              <BlocklyEditor theme={theme} />
+              <BlocklyEditor theme={theme} scriptId={selectedScriptId} />
             ),
           },
           {
@@ -130,12 +152,12 @@ const App: React.FC = () => {
               </div>
             ),
           },
-        ]),
+        ],
       },
       {
         id: 'right',
         width: 260,
-        panels: filterPanels([
+        panels: [
           {
             id: 'outline',
             title: 'Outline',
@@ -166,14 +188,14 @@ const App: React.FC = () => {
               </div>
             ),
           },
-        ]),
+        ],
       },
     ],
     closedPanels,
     theme,
   });
 
-  const closablePanels = getClosablePanels(layoutConfig);
+  const closablePanels = allPanels;
   layoutConfig.columns[1].panels[0].content = (
     <Toolbar
       closablePanels={closablePanels}
@@ -184,7 +206,19 @@ const App: React.FC = () => {
       onChangeFolder={toolbarData.moveScriptToFolder}
       currentScriptName={toolbarData.currentScriptName}
       onRenameScript={toolbarData.renameScript}
+      onSave={async () => {
+        if (blocklyEditorRef.current && blocklyEditorRef.current.handleSave) {
+          await blocklyEditorRef.current.handleSave();
+        }
+      }}
+      onCancel={() => {
+        // Optional: Workspace zurücksetzen oder andere Logik
+      }}
     />
+  );
+
+  layoutConfig.columns[1].panels[1].content = (
+    <BlocklyEditor ref={blocklyEditorRef} theme={theme} scriptId={selectedScriptId} />
   );
 
   const handleLayoutChange = (newConfig: DockingLayoutConfig) => {
