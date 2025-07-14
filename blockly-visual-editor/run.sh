@@ -8,8 +8,6 @@ if [ ! -f /data/scripts.json ]; then
 fi
 
 echo "Starte run.sh..."
-echo "Verzeichnisinhalt /:"
-ls -l /
 
 # Backend starten
 exec node /backend/server.js 

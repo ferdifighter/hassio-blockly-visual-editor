@@ -9,13 +9,9 @@ const axios = require('axios');
 require('dotenv').config();
 
 // Home Assistant Umgebungsvariablen
-const HA_TOKEN = process.env.SUPERVISOR_TOKEN;
-const HA_URL = process.env.SUPERVISOR_URL || 'http://supervisor/core';
-
-// Immer /data/scripts.json verwenden
 const SCRIPTS_PATH = '/data/scripts.json';
 
-// Beim Start: scripts.json anlegen, falls nicht vorhanden
+// Immer /data/scripts.json verwenden
 if (!fs.existsSync(SCRIPTS_PATH)) {
   const initialData = {
     id: 'root',
@@ -65,6 +61,76 @@ app.put('/api/scripts', (req, res) => {
   });
 });
 
+// Hilfsfunktion: Script in der Baumstruktur finden
+function findScriptInTree(tree, scriptId) {
+  if (tree.id === scriptId) return tree;
+  if (tree.children) {
+    for (const child of tree.children) {
+      const found = findScriptInTree(child, scriptId);
+      if (found) return found;
+    }
+  }
+  return null;
+}
+
+// Hilfsfunktion: Script in der Baumstruktur aktualisieren
+function updateScriptInTree(tree, scriptId, updatedScript) {
+  if (tree.id === scriptId) {
+    return { ...tree, ...updatedScript };
+  }
+  if (tree.children) {
+    return {
+      ...tree,
+      children: tree.children.map(child => updateScriptInTree(child, scriptId, updatedScript))
+    };
+  }
+  return tree;
+}
+
+// API: Einzelnes Script nach ID laden
+app.get('/api/scripts/:id', (req, res) => {
+  fs.readFile(SCRIPTS_PATH, 'utf8', (err, data) => {
+    if (err) {
+      console.error('Fehler beim Lesen von scripts.json:', err);
+      return res.status(500).json({ error: `Konnte scripts.json nicht lesen: ${err.message}` });
+    }
+    try {
+      const tree = JSON.parse(data);
+      const script = findScriptInTree(tree, req.params.id);
+      if (!script) {
+        return res.status(404).json({ error: 'Script nicht gefunden' });
+      }
+      res.json(script);
+    } catch (e) {
+      res.status(500).json({ error: 'JSON-Parsing-Fehler: ' + e.message });
+    }
+  });
+});
+
+// API: Einzelnes Script speichern/aktualisieren
+app.put('/api/scripts/:id', (req, res) => {
+  fs.readFile(SCRIPTS_PATH, 'utf8', (err, data) => {
+    if (err) {
+      console.error('Fehler beim Lesen von scripts.json:', err);
+      return res.status(500).json({ error: `Konnte scripts.json nicht lesen: ${err.message}` });
+    }
+    try {
+      const tree = JSON.parse(data);
+      const updatedTree = updateScriptInTree(tree, req.params.id, req.body);
+      
+      fs.writeFile(SCRIPTS_PATH, JSON.stringify(updatedTree, null, 2), err2 => {
+        if (err2) {
+          console.error('Fehler beim Schreiben von scripts.json:', err2);
+          return res.status(500).json({ error: `Konnte scripts.json nicht speichern: ${err2.message}` });
+        }
+        res.json({ success: true });
+      });
+    } catch (e) {
+      res.status(500).json({ error: 'JSON-Parsing-Fehler: ' + e.message });
+    }
+  });
+});
+
 // API: Alle Automatisierungen laden
 app.get('/api/automations', (req, res) => {
   fs.readFile(AUTOMATIONS_PATH, 'utf8', (err, data) => {
@@ -100,25 +166,54 @@ app.get('/api/automations/:id', (req, res) => {
 
 // API: Automatisierung speichern/aktualisieren
 app.put('/api/automations/:id', (req, res) => {
+  console.log('--- PUT /api/automations/:id ---');
+  console.log('ID:', req.params.id);
+  console.log('Body:', JSON.stringify(req.body, null, 2));
   fs.readFile(AUTOMATIONS_PATH, 'utf8', (err, data) => {
     if (err) {
+      console.error('Fehler beim Lesen von automations.yaml:', err);
       return res.status(500).json({ error: `Konnte automations.yaml nicht lesen: ${err.message}` });
     }
     let automations = [];
     try {
       automations = yaml.load(data) || [];
     } catch (e) {
+      console.error('YAML-Parsing-Fehler:', e);
       return res.status(500).json({ error: 'YAML-Parsing-Fehler: ' + e.message });
     }
+    console.log('Automations vor Update:', JSON.stringify(automations, null, 2));
     const idx = automations.findIndex(a => a.id == req.params.id);
     if (idx >= 0) {
       automations[idx] = req.body;
+      console.log('Automatisierung aktualisiert:', JSON.stringify(req.body, null, 2));
     } else {
       automations.push(req.body);
+      console.log('Automatisierung hinzugefügt:', JSON.stringify(req.body, null, 2));
     }
-    fs.writeFile(AUTOMATIONS_PATH, yaml.dump(automations), err2 => {
+    console.log('Automations nach Update:', JSON.stringify(automations, null, 2));
+    fs.writeFile(AUTOMATIONS_PATH, yaml.dump(automations), async err2 => {
       if (err2) {
+        console.error('Fehler beim Schreiben von automations.yaml:', err2);
         return res.status(500).json({ error: `Konnte automations.yaml nicht speichern: ${err2.message}` });
+      }
+      console.log('Automatisierung erfolgreich gespeichert!');
+      // Nach dem Speichern: Automationen in Home Assistant neu laden
+      const HA_TOKEN = process.env.SUPERVISOR_TOKEN;
+      const HA_URL = process.env.SUPERVISOR_URL || 'http://supervisor/core';
+      console.log(`SUPERVISOR_TOKEN verfügbar: ${!!process.env.SUPERVISOR_TOKEN}`);
+      if (HA_TOKEN && HA_URL) {
+        try {
+          const reloadResult = await axios.post(
+            `${HA_URL}/api/services/automation/reload`,
+            {},
+            { headers: { Authorization: `Bearer ${HA_TOKEN}`, 'Content-Type': 'application/json' } }
+          );
+          console.log('Automationen in Home Assistant neu geladen:', reloadResult.data);
+        } catch (reloadErr) {
+          console.error('Fehler beim Reload der Automationen:', reloadErr.response?.data || reloadErr.message);
+        }
+      } else {
+        console.warn('HA_TOKEN oder HA_URL nicht gesetzt, Automationen werden nicht automatisch neu geladen.');
       }
       res.json({ success: true });
     });
@@ -153,9 +248,29 @@ function getEntityIdByAutomationId(automationId) {
 
 // Automatisierung aktivieren
 app.post('/api/automations/:id/start', async (req, res) => {
+  const HA_TOKEN = process.env.SUPERVISOR_TOKEN;
+  const HA_URL = process.env.SUPERVISOR_URL || 'http://supervisor/core';
   if (!HA_TOKEN || !HA_URL) return res.status(500).json({ error: 'HA_TOKEN oder HA_URL nicht gesetzt' });
+
   const entity_id = getEntityIdByAutomationId(req.params.id);
-  if (!entity_id) return res.status(404).json({ error: 'Automatisierung oder alias nicht gefunden' });
+  if (!entity_id) {
+    // Fehlerursache genauer ausgeben
+    try {
+      const data = fs.readFileSync(AUTOMATIONS_PATH, 'utf8');
+      const automations = yaml.load(data) || [];
+      const automation = automations.find(a => a.id == req.params.id);
+      if (!automation) {
+        return res.status(404).json({ error: `Automatisierung mit id '${req.params.id}' nicht gefunden.`, automations });
+      }
+      if (!automation.alias) {
+        return res.status(400).json({ error: `Automatisierung mit id '${req.params.id}' hat keinen alias.`, automation });
+      }
+      return res.status(400).json({ error: `Unbekannter Fehler bei entity_id-Ermittlung.`, automation });
+    } catch (e) {
+      return res.status(500).json({ error: 'Fehler beim Lesen der automations.yaml: ' + e.message });
+    }
+  }
+
   try {
     const result = await axios.post(
       `${HA_URL}/api/services/automation/turn_on`,
@@ -171,9 +286,26 @@ app.post('/api/automations/:id/start', async (req, res) => {
 
 // Automatisierung deaktivieren
 app.post('/api/automations/:id/stop', async (req, res) => {
+  const HA_TOKEN = process.env.SUPERVISOR_TOKEN;
+  const HA_URL = process.env.SUPERVISOR_URL || 'http://supervisor/core';
   if (!HA_TOKEN || !HA_URL) return res.status(500).json({ error: 'HA_TOKEN oder HA_URL nicht gesetzt' });
   const entity_id = getEntityIdByAutomationId(req.params.id);
-  if (!entity_id) return res.status(404).json({ error: 'Automatisierung oder alias nicht gefunden' });
+  if (!entity_id) {
+    try {
+      const data = fs.readFileSync(AUTOMATIONS_PATH, 'utf8');
+      const automations = yaml.load(data) || [];
+      const automation = automations.find(a => a.id == req.params.id);
+      if (!automation) {
+        return res.status(404).json({ error: `Automatisierung mit id '${req.params.id}' nicht gefunden.`, automations });
+      }
+      if (!automation.alias) {
+        return res.status(400).json({ error: `Automatisierung mit id '${req.params.id}' hat keinen alias.`, automation });
+      }
+      return res.status(400).json({ error: `Unbekannter Fehler bei entity_id-Ermittlung.`, automation });
+    } catch (e) {
+      return res.status(500).json({ error: 'Fehler beim Lesen der automations.yaml: ' + e.message });
+    }
+  }
   try {
     const result = await axios.post(
       `${HA_URL}/api/services/automation/turn_off`,
@@ -189,9 +321,26 @@ app.post('/api/automations/:id/stop', async (req, res) => {
 
 // Status einer Automatisierung abfragen
 app.get('/api/automations/:id/status', async (req, res) => {
+  const HA_TOKEN = process.env.SUPERVISOR_TOKEN;
+  const HA_URL = process.env.SUPERVISOR_URL || 'http://supervisor/core';
   if (!HA_TOKEN || !HA_URL) return res.status(500).json({ error: 'HA_TOKEN oder HA_URL nicht gesetzt' });
   const entity_id = getEntityIdByAutomationId(req.params.id);
-  if (!entity_id) return res.status(404).json({ error: 'Automatisierung oder alias nicht gefunden' });
+  if (!entity_id) {
+    try {
+      const data = fs.readFileSync(AUTOMATIONS_PATH, 'utf8');
+      const automations = yaml.load(data) || [];
+      const automation = automations.find(a => a.id == req.params.id);
+      if (!automation) {
+        return res.status(404).json({ error: `Automatisierung mit id '${req.params.id}' nicht gefunden.`, automations });
+      }
+      if (!automation.alias) {
+        return res.status(400).json({ error: `Automatisierung mit id '${req.params.id}' hat keinen alias.`, automation });
+      }
+      return res.status(400).json({ error: `Unbekannter Fehler bei entity_id-Ermittlung.`, automation });
+    } catch (e) {
+      return res.status(500).json({ error: 'Fehler beim Lesen der automations.yaml: ' + e.message });
+    }
+  }
   try {
     const result = await axios.get(
       `${HA_URL}/api/states/${entity_id}`,
@@ -218,7 +367,7 @@ app.get('*', (req, res) => {
 app.listen(PORT, HOST, () => {
   console.log(`Backend läuft auf http://${HOST}:${PORT}`);
   console.log(`scripts.json Pfad: ${SCRIPTS_PATH}`);
-  console.log(`HA_TOKEN verfügbar: ${HA_TOKEN ? 'Ja' : 'Nein'}`);
-  console.log(`HA_URL: ${HA_URL}`);
+  console.log(`HA_TOKEN verfügbar: ${process.env.SUPERVISOR_TOKEN ? 'Ja' : 'Nein'}`);
+  console.log(`HA_URL: ${process.env.SUPERVISOR_URL || 'http://supervisor/core'}`);
   console.log(`Toolbox-Pfad: /config/www/toolbox`);
 }); 

@@ -15,33 +15,22 @@ const App: React.FC = () => {
   const [selectedScriptId, setSelectedScriptId] = useState<string | null>(null);
   const blocklyEditorRef = useRef<any>(null);
 
-  // Theme aus Addon-Konfiguration laden (entfernt, da /api/addon/config nicht existiert)
-  // useEffect(() => {
-  //   async function getAddonTheme() {
-  //     try {
-  //       const res = await fetch('/api/addon/config');
-  //       const config = await res.json();
-  //       return config.theme || 'auto';
-  //     } catch {
-  //       return 'auto';
-  //     }
-  //   }
-  //   getAddonTheme().then(setTheme);
-  // }, []);
+  // Theme wird standardmäßig auf 'auto' gesetzt
+  // Die Addon-Konfiguration wird nicht mehr verwendet, da /api/addon/config nicht existiert
 
   // State für Toolbar-Daten aus Sidebar
   const [toolbarData, setToolbarData] = useState<{
     folders: { id: string; name: string }[];
     currentFolderId: string | null;
     currentScriptName: string | null;
+    currentScriptId: string | null;
     moveScriptToFolder: (folderId: string) => void;
-    renameScript: (newName: string) => void;
   }>({ 
     folders: [], 
     currentFolderId: null, 
     currentScriptName: null, 
-    moveScriptToFolder: () => {},
-    renameScript: () => {}
+    currentScriptId: null,
+    moveScriptToFolder: () => {}
   });
 
   const getClosablePanels = (config: DockingLayoutConfig): { id: string; title: string }[] => {
@@ -83,14 +72,12 @@ const App: React.FC = () => {
                     folders: data.folders,
                     currentFolderId: data.currentFolderId,
                     currentScriptName: data.currentScriptName,
-                    moveScriptToFolder: data.moveScriptToFolder,
-                    renameScript: data.renameScript
+                    currentScriptId: data.currentScriptId,
+                    moveScriptToFolder: data.moveScriptToFolder
                   });
                   // Script-Auswahl übernehmen
-                  if (data.currentScriptId) setSelectedScriptId(data.currentScriptId);
+                  setSelectedScriptId(data.currentScriptId);
                 }}
-                onScriptSelect={setSelectedScriptId}
-                selectedScriptId={selectedScriptId}
               />
             ),
           },     
@@ -205,15 +192,7 @@ const App: React.FC = () => {
       currentFolderId={toolbarData.currentFolderId || ''}
       onChangeFolder={toolbarData.moveScriptToFolder}
       currentScriptName={toolbarData.currentScriptName}
-      onRenameScript={toolbarData.renameScript}
-      onSave={async () => {
-        if (blocklyEditorRef.current && blocklyEditorRef.current.handleSave) {
-          await blocklyEditorRef.current.handleSave();
-        }
-      }}
-      onCancel={() => {
-        // Optional: Workspace zurücksetzen oder andere Logik
-      }}
+      onSave={() => blocklyEditorRef.current?.handleSave()}
     />
   );
 

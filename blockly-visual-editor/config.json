@@ -11,7 +11,7 @@
     "amd64",
     "i386"
   ],
-  "startup": "application",
+  "startup": "services",
   "init": false,
   "ports": {
     "8099/tcp": null
@@ -40,5 +40,6 @@
   "homeassistant_api": true,
   "auth_api": true,
   "ingress_stream": true,
-  "hassio_role": "admin"
+  "hassio_role": "admin",
+  "hassio_api": true
 } 

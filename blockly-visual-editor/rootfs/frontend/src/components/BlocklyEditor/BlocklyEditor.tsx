@@ -45,8 +45,8 @@ const BlocklyEditor = forwardRef<any, BlocklyEditorProps>(({ theme, scriptId, on
 
   // Sprache und Toolbox dynamisch bestimmen
   useEffect(() => {
-    // Sprache statisch setzen (z.B. 'system', 'de' oder 'en')
-    const lang = 'system'; // oder 'de'/'en' als Fallback
+    // Sprache statisch setzen (z.B. 'de' oder 'en')
+    const lang = 'de'; // oder 'en' als Fallback
     const fallbackToolboxXml = `
 <xml id="toolbox" style="display: none">
   <category name="Logik" colour="#8E24AA">
@@ -66,62 +66,191 @@ const BlocklyEditor = forwardRef<any, BlocklyEditorProps>(({ theme, scriptId, on
       const url = `${base}toolbox/${lang}/toolbox_main.xml`;
       try {
         const res = await fetch(url);
+        if (!res.ok) {
+          throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+        }
         const xml = await res.text();
         if (xml.trim().startsWith('<!DOCTYPE html') || xml.trim().startsWith('<html')) {
-          throw new Error('Toolbox-XML nicht gefunden');
+          throw new Error('Toolbox-XML nicht gefunden - HTML-Seite erhalten');
         }
+        console.log('Toolbox erfolgreich geladen:', url);
         setToolboxXml(xml);
-      } catch {
+      } catch (error) {
+        console.warn('Fehler beim Laden der Toolbox, verwende Fallback:', error);
         setToolboxXml(fallbackToolboxXml);
       }
     }
     loadToolboxXml();
   }, []);
 
-  // Automatisierung laden, wenn scriptId sich ändert
+  // Script laden, wenn scriptId sich ändert
   useEffect(() => {
     if (!scriptId) return;
     setLoading(true);
-    fetch(getApiUrl(`api/automations/${scriptId}`))
+    
+    const apiUrl = getApiUrl(`api/scripts/${scriptId}`);
+    console.log('Lade Script:', scriptId, 'von URL:', apiUrl);
+    
+    // Zuerst Script-Info aus scripts.json laden
+    fetch(apiUrl)
       .then(res => {
-        if (!res.ok) throw new Error('not found');
+        console.log('API Response Status:', res.status, res.statusText);
+        if (!res.ok) {
+          // Script existiert noch nicht - das ist normal bei neuen Scripts
+          console.log('Script existiert noch nicht, erstelle neue Automatisierung');
+          const newAutomation = {
+            id: scriptId,
+            alias: scriptId, // Wird später durch den Namen ersetzt
+            description: '',
+            trigger: [],
+            condition: [],
+            action: [],
+            mode: 'single'
+          };
+          setAutomation(newAutomation);
+          if (workspaceRef.current) {
+            workspaceRef.current.clear();
+          }
+          return null; // Keine weiteren API-Aufrufe nötig
+        }
         return res.json();
       })
-      .then(data => {
-        setAutomation(data);
-        // Blockly-XML importieren
+      .then(scriptData => {
+        if (!scriptData) return; // Script war neu, bereits behandelt
+        
+        // Dann versuchen, die Automatisierung aus automations.yaml zu laden
+        const automationUrl = getApiUrl(`api/automations/${scriptId}`);
+        console.log('Lade Automatisierung von URL:', automationUrl);
+        
+        return fetch(automationUrl)
+          .then(res => {
+            console.log('Automatisierung API Response Status:', res.status, res.statusText);
+            if (!res.ok) {
+              // Keine Automatisierung vorhanden - erstelle eine neue
+              console.log('Erstelle neue Automatisierung für Script:', scriptId);
+              const newAutomation = {
+                id: scriptId,
+                alias: scriptData.name || scriptId,
+                description: '',
+                trigger: [],
+                condition: [],
+                action: [],
+                mode: 'single'
+              };
+              return newAutomation;
+            }
+            return res.json();
+          })
+          .then(automationData => {
+            console.log('Automatisierung geladen/erstellt:', automationData);
+            setAutomation(automationData);
+            // Blockly-XML importieren
+            if (workspaceRef.current) {
+              workspaceRef.current.clear();
+              if (automationData.xml) {
+                try {
+                  const dom = textToDom(automationData.xml);
+                  Blockly.Xml.domToWorkspace(dom, workspaceRef.current);
+                  console.log('Blockly-XML erfolgreich importiert');
+                } catch (e) {
+                  console.warn('Fehler beim Importieren des Blockly-XML:', e);
+                }
+              } else {
+                console.log('Keine XML-Daten vorhanden, leeres Workspace');
+              }
+            } else {
+              console.warn('Workspace nicht verfügbar');
+            }
+          });
+      })
+      .catch((error) => {
+        console.warn('Fehler beim Laden des Scripts:', error);
+        // Erstelle eine neue Automatisierung bei Fehlern
+        const newAutomation = {
+          id: scriptId,
+          alias: scriptId,
+          description: '',
+          trigger: [],
+          condition: [],
+          action: [],
+          mode: 'single'
+        };
+        setAutomation(newAutomation);
         if (workspaceRef.current) {
           workspaceRef.current.clear();
-          if (data.xml) {
-            try {
-              const dom = textToDom(data.xml);
-              Blockly.Xml.domToWorkspace(dom, workspaceRef.current);
-            } catch (e) {
-              console.warn('Fehler beim Importieren des Blockly-XML:', e);
-            }
-          }
         }
-      })
-      .catch(() => {
-        // Noch keine Automatisierung vorhanden
-        setAutomation(null);
-        if (workspaceRef.current) workspaceRef.current.clear();
       })
       .finally(() => setLoading(false));
   }, [scriptId]);
 
+  // Hilfsfunktion: entity_id aus Alias generieren (Slugify wie im Backend)
+  function slugify(str: string) {
+    return str
+      .toLowerCase()
+      .replace(/ä/g, 'ae')
+      .replace(/ö/g, 'oe')
+      .replace(/ü/g, 'ue')
+      .replace(/ß/g, 'ss')
+      .replace(/[^a-z0-9]+/g, '_')
+      .replace(/^_+|_+$/g, '');
+  }
+
+  // Alias-Validierung und entity_id-Vorschau
+  const [aliasWarning, setAliasWarning] = useState<string | null>(null);
+  const [entityIdPreview, setEntityIdPreview] = useState<string>('');
+
+  // Synchronisiere Alias mit Scriptnamen
+  useEffect(() => {
+    if (automation && automation.alias !== scriptName) {
+      setAutomation((prev: any) => prev ? { ...prev, alias: scriptName } : prev);
+    }
+  }, [scriptName]);
+
+  // Alias-Validierung und Vorschau
+  useEffect(() => {
+    if (automation && automation.alias) {
+      const alias = automation.alias.trim();
+      const slug = slugify(alias);
+      setEntityIdPreview(slug ? `automation.${slug}` : '');
+      if (!alias || !slug) {
+        setAliasWarning('Alias darf nicht leer sein und muss mindestens einen Buchstaben oder eine Zahl enthalten.');
+      } else {
+        setAliasWarning(null);
+      }
+    } else {
+      setEntityIdPreview('');
+      setAliasWarning(null);
+    }
+  }, [automation?.alias]);
+
   // Speichern-Logik als Funktion exportieren
   const handleSave = async () => {
-    if (!scriptId || !workspaceRef.current) return;
-    const xmlDom = Blockly.Xml.workspaceToDom(workspaceRef.current);
+    const xmlDom = Blockly.Xml.workspaceToDom(workspaceRef.current!);
     const xmlText = domToText(xmlDom);
+    console.log('handleSave aufgerufen', {
+      scriptId,
+      automation,
+      xmlText
+    });
+    if (!scriptId || !workspaceRef.current) return;
+    const alias = scriptName.trim();
+    const slug = slugify(alias);
+    if (!alias || !slug) {
+      setAliasWarning('Alias darf nicht leer sein und muss mindestens einen Buchstaben oder eine Zahl enthalten.');
+      return;
+    }
+    if (automation && automation.alias !== alias) {
+      alert('Achtung: Wenn du den Namen änderst, ändert sich auch die entity_id! (entity_id: ' + `automation.${slug}` + ')');
+    }
     const newAutomation = {
       ...(automation || { id: scriptId }),
       id: scriptId,
-      alias: scriptName || scriptId,
+      alias: alias,
       xml: xmlText,
     };
     setLoading(true);
+    
+    // Speichere die Automatisierung in automations.yaml
     await fetch(getApiUrl(`api/automations/${scriptId}`),
       {
         method: 'PUT',
@@ -129,6 +258,7 @@ const BlocklyEditor = forwardRef<any, BlocklyEditorProps>(({ theme, scriptId, on
         body: JSON.stringify(newAutomation)
       }
     );
+    
     setAutomation(newAutomation);
     setLoading(false);
   };
@@ -203,7 +333,7 @@ const BlocklyEditor = forwardRef<any, BlocklyEditorProps>(({ theme, scriptId, on
     }, 0);
     // Cleanup handled by next effect run
     // eslint-disable-next-line
-  }, [theme, toolboxXml]);
+  }, [theme, toolboxXml, scriptId]);
 
   // ResizeObserver für dynamische Anpassung
   useEffect(() => {
@@ -215,9 +345,20 @@ const BlocklyEditor = forwardRef<any, BlocklyEditorProps>(({ theme, scriptId, on
     return () => observer.disconnect();
   }, []);
 
+  // Leere den Workspace, wenn kein Script ausgewählt ist
+  useEffect(() => {
+    if (scriptId === null && workspaceRef.current) {
+      workspaceRef.current.clear();
+    }
+  }, [scriptId]);
+
   useImperativeHandle(ref, () => ({
     handleSave
   }));
+
+  if (!scriptId) {
+    return <div style={{ color: '#888', textAlign: 'center', padding: 32 }}>Kein Script ausgewählt</div>;
+  }
 
   if (!toolboxXml) {
     return <div>Lade Blockly-Toolbox…</div>;
@@ -226,6 +367,12 @@ const BlocklyEditor = forwardRef<any, BlocklyEditorProps>(({ theme, scriptId, on
   return (
     <section style={{ display: 'flex', flex: 1, width: '100%', height: '100%' }}>
       <div ref={blocklyDiv} id="blocklyDiv" style={{ height: '100%', width: '100%' }} />
+      {entityIdPreview && (
+        <span style={{ fontSize: 11, color: '#aaa', marginTop: 2 }}>entity_id: {entityIdPreview}</span>
+      )}
+      {aliasWarning && (
+        <span style={{ fontSize: 11, color: '#e74c3c', marginTop: 2 }}>{aliasWarning}</span>
+      )}
     </section>
   );
 });
@@ -235,14 +382,27 @@ export default BlocklyEditor;
 // Exportiere handleSave für die Toolbar
 export const getBlocklySaveFunction = (ref: React.RefObject<any>) => ref.current?.handleSave; 
 
-// Hilfsfunktion für API-URL (wie in Sidebar)
+// Hilfsfunktion für API-URL (dynamisch für verschiedene Umgebungen)
 const getApiUrl = (endpoint: string) => {
-  if (
-    window.location.hostname === 'localhost' ||
-    window.location.hostname === '127.0.0.1'
-  ) {
-    return `http://localhost:8099/${endpoint.replace(/^\//, '')}`;
+  console.log('getApiUrl Debug:', {
+    hostname: window.location.hostname,
+    protocol: window.location.protocol,
+    host: window.location.host,
+    pathname: window.location.pathname,
+    endpoint
+  });
+  
+  // Für lokale Entwicklung (localhost)
+  if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+    const url = `http://localhost:8099/${endpoint.replace(/^\//, '')}`;
+    console.log('Lokale Entwicklung - URL:', url);
+    return url;
   }
+  
+  // Für Home Assistant Ingress
+  // Der Ingress-Pfad ist bereits im pathname enthalten, also verwende den gleichen Host
   const base = window.location.pathname.endsWith('/') ? window.location.pathname : window.location.pathname + '/';
-  return `${base}${endpoint.replace(/^\//, '')}`;
+  const url = `${window.location.protocol}//${window.location.host}${base}${endpoint.replace(/^\//, '')}`;
+  console.log('Home Assistant Ingress - URL:', url);
+  return url;
 }; 

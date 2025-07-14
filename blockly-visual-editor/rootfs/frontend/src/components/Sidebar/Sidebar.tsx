@@ -160,12 +160,15 @@ interface SidebarProps {
     folders: { id: string; name: string }[];
     currentFolderId: string | null;
     currentScriptName: string | null;
+    currentScriptId: string | null;
     moveScriptToFolder: (folderId: string) => void;
   }) => void;
 }
 
 const Sidebar: React.FC<SidebarProps> = ({ onSelectionChange }) => {
   const [treeObj, setTreeObj] = useState<any>(null);
+  // Status-Map: { [id]: 'on' | 'off' }
+  const [automationStatus, setAutomationStatus] = useState<{ [id: string]: 'on' | 'off' | undefined }>({});
   const [runningScriptId, setRunningScriptId] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingValue, setEditingValue] = useState<string>('');
@@ -279,6 +282,50 @@ const Sidebar: React.FC<SidebarProps> = ({ onSelectionChange }) => {
       });
   }, []);
 
+  // Status für alle Skripte abfragen
+  const fetchAutomationStatus = useCallback((ids: string[]) => {
+    ids.forEach(id => {
+      fetch(getApiUrl(`api/automations/${id}/status`))
+        .then(res => res.ok ? res.json() : Promise.reject(res))
+        .then(data => {
+          setAutomationStatus(prev => ({ ...prev, [id]: data.state }));
+        })
+        .catch(() => {
+          setAutomationStatus(prev => ({ ...prev, [id]: undefined }));
+        });
+    });
+  }, []);
+
+  // IDs aller Skripte extrahieren
+  const getAllScriptIds = (tree: any): string[] => {
+    if (!tree) return [];
+    let ids: string[] = [];
+    if (tree.type === 'script' && tree.id) ids.push(tree.id);
+    if (tree.children) {
+      tree.children.forEach((child: any) => {
+        ids = ids.concat(getAllScriptIds(child));
+      });
+    }
+    return ids;
+  };
+
+  // Status beim Laden der Tree-Daten abfragen
+  useEffect(() => {
+    if (!treeObj) return;
+    const ids = getAllScriptIds(treeObj);
+    if (ids.length > 0) fetchAutomationStatus(ids);
+  }, [treeObj, fetchAutomationStatus]);
+
+  // Optional: Polling für Status (z.B. alle 5 Sekunden)
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (!treeObj) return;
+      const ids = getAllScriptIds(treeObj);
+      if (ids.length > 0) fetchAutomationStatus(ids);
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [treeObj, fetchAutomationStatus]);
+
   // Fokussiere Input-Feld wenn editingId gesetzt wird
   useEffect(() => {
     if (editingId && inputRef.current) {
@@ -313,14 +360,22 @@ const Sidebar: React.FC<SidebarProps> = ({ onSelectionChange }) => {
     };
   }, [editingId, editingValue]);
 
-  // Handler für Play/Pause
+  // Play/Pause-Handler: API-Aufruf und Status aktualisieren
   const onPlayPause = (element: any, e: React.MouseEvent) => {
     e.stopPropagation();
-    if (runningScriptId === element.id) {
-      setRunningScriptId(null);
-    } else {
-      setRunningScriptId(element.id);
-    }
+    const id = element.id;
+    const isRunning = automationStatus[id] === 'on';
+    const endpoint = isRunning ? `api/automations/${id}/stop` : `api/automations/${id}/start`;
+    fetch(getApiUrl(endpoint), { method: 'POST' })
+      .then(res => res.ok ? res.json() : Promise.reject(res))
+      .then(() => {
+        // Nach erfolgreichem Start/Stop Status neu abfragen
+        fetchAutomationStatus([id]);
+      })
+      .catch(() => {
+        // Fehlerbehandlung: Status trotzdem neu abfragen
+        fetchAutomationStatus([id]);
+      });
   };
 
   // Editiermodus aktivieren
@@ -450,9 +505,48 @@ const Sidebar: React.FC<SidebarProps> = ({ onSelectionChange }) => {
     setEditingId(newId);
   };
 
-  // Speichern des Namens
+  // Hilfsfunktion: entity_id aus Alias generieren (Slugify wie im Backend)
+  function slugify(str: string) {
+    return str
+      .toLowerCase()
+      .replace(/ä/g, 'ae')
+      .replace(/ö/g, 'oe')
+      .replace(/ü/g, 'ue')
+      .replace(/ß/g, 'ss')
+      .replace(/[^a-z0-9]+/g, '_')
+      .replace(/^_+|_+$/g, '');
+  }
+
+  // Alias-Validierung und entity_id-Vorschau
+  const [aliasWarning, setAliasWarning] = useState<string | null>(null);
+  const [entityIdPreview, setEntityIdPreview] = useState<string>('');
+
+  // Beim Editieren/Umbenennen prüfen
+  useEffect(() => {
+    if (editingId && editingValue !== undefined) {
+      const alias = editingValue.trim();
+      const slug = slugify(alias);
+      setEntityIdPreview(slug ? `automation.${slug}` : '');
+      if (!alias || !slug) {
+        setAliasWarning('Alias darf nicht leer sein und muss mindestens einen Buchstaben oder eine Zahl enthalten.');
+      } else {
+        setAliasWarning(null);
+      }
+    } else {
+      setEntityIdPreview('');
+      setAliasWarning(null);
+    }
+  }, [editingId, editingValue]);
+
+  // Speichern des Namens (Alias-Validierung)
   const saveEdit = (id: string, newName: string) => {
     if (!treeObj || !id) return;
+    const alias = newName.trim();
+    const slug = slugify(alias);
+    if (!alias || !slug) {
+      setAliasWarning('Alias darf nicht leer sein und muss mindestens einen Buchstaben oder eine Zahl enthalten.');
+      return;
+    }
     
     // Verwende den aktuellen Wert aus dem Tree, falls newName leer ist
     let finalName = 'Unbenannt';
@@ -656,10 +750,11 @@ const Sidebar: React.FC<SidebarProps> = ({ onSelectionChange }) => {
         folders,
         currentFolderId,
         currentScriptName,
+        currentScriptId: selectedId,
         moveScriptToFolder,
       });
     }
-  }, [folders, currentFolderId, currentScriptName, moveScriptToFolder, onSelectionChange]);
+  }, [folders, currentFolderId, currentScriptName, selectedId, moveScriptToFolder, onSelectionChange]);
 
   return (
     <DndProvider backend={HTML5Backend}>
@@ -811,33 +906,41 @@ const Sidebar: React.FC<SidebarProps> = ({ onSelectionChange }) => {
                           )
                         : <FaFileIcon color="#8ecae6" className="icon" />}
                       {editingId === element.id ? (
-                        <input
-                          ref={inputRef}
-                          key={element.id}
-                          value={editingValue || ''}
-                          onChange={e => {
-                            const value = e?.target?.value;
-                            setEditingValue(value || '');
-                          }}
-                          onKeyDown={e => {
-                            if (e?.key === 'Enter') {
-                              const value = editingValue || '';
-                              saveEdit(element.id, value);
-                            }
-                            if (e?.key === 'Escape') cancelEdit();
-                          }}
-                          onMouseDown={e => e.stopPropagation()}
-                          style={{
-                            fontSize: 16,
-                            fontFamily: 'monospace',
-                            background: '#333',
-                            color: '#fff',
-                            border: '1px solid #555',
-                            borderRadius: 3,
-                            padding: '2px 6px',
-                            minWidth: 40
-                          }}
-                        />
+                        <div style={{ display: 'flex', flexDirection: 'column' }}>
+                          <input
+                            ref={inputRef}
+                            key={element.id}
+                            value={editingValue || ''}
+                            onChange={e => {
+                              const value = e?.target?.value;
+                              setEditingValue(value || '');
+                            }}
+                            onKeyDown={e => {
+                              if (e?.key === 'Enter') {
+                                const value = editingValue || '';
+                                saveEdit(element.id, value);
+                              }
+                              if (e?.key === 'Escape') cancelEdit();
+                            }}
+                            onMouseDown={e => e.stopPropagation()}
+                            style={{
+                              fontSize: 16,
+                              fontFamily: 'monospace',
+                              background: '#333',
+                              color: '#fff',
+                              border: '1px solid #555',
+                              borderRadius: 3,
+                              padding: '2px 6px',
+                              minWidth: 40
+                            }}
+                          />
+                          {entityIdPreview && (
+                            <span style={{ fontSize: 11, color: '#aaa', marginTop: 2 }}>entity_id: {entityIdPreview}</span>
+                          )}
+                          {aliasWarning && (
+                            <span style={{ fontSize: 11, color: '#e74c3c', marginTop: 2 }}>{aliasWarning}</span>
+                          )}
+                        </div>
                       ) : (
                         <span>{element.name ?? ''}</span>
                       )}
@@ -863,12 +966,16 @@ const Sidebar: React.FC<SidebarProps> = ({ onSelectionChange }) => {
                     {element.type !== 'folder' && (
                       <div style={{ display: 'flex', gap: 4 }}>
                         <button
-                          title={runningScriptId === element.id ? 'Pause' : 'Starten'}
-                          style={{ background: 'none', border: 'none', color: runningScriptId === element.id ? '#4ecdc4' : '#aaa', cursor: 'pointer', padding: 2 }}
-                          onClick={e => onPlayPause(element, e)}
+                          title={automationStatus[element.id] === 'on' ? 'Pause' : 'Starten'}
+                          style={{ background: 'none', border: 'none', color: automationStatus[element.id] === 'on' ? '#4ecdc4' : '#aaa', cursor: automationStatus[element.id] ? 'pointer' : 'not-allowed', padding: 2, opacity: automationStatus[element.id] ? 1 : 0.5 }}
+                          onClick={e => automationStatus[element.id] ? onPlayPause(element, e) : undefined}
+                          disabled={!automationStatus[element.id]}
                         >
-                          {runningScriptId === element.id ? <FaPauseIcon size={14} /> : <FaPlayIcon size={14} />}
+                          {automationStatus[element.id] === 'on' ? <FaPauseIcon size={14} /> : <FaPlayIcon size={14} />}
                         </button>
+                        {!automationStatus[element.id] && (
+                          <span style={{ fontSize: 11, color: '#e74c3c', marginLeft: 2 }}>Nicht initialisiert</span>
+                        )}
                         <button
                           title="Umbenennen"
                           style={{ background: 'none', border: 'none', color: '#aaa', cursor: 'pointer', padding: 2 }}

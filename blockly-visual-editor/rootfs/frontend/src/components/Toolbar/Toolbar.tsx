@@ -10,6 +10,7 @@ interface ToolbarProps {
   onChangeFolder?: (folderId: string) => void;
   currentScriptName?: string | null;
   onRenameScript?: (newName: string) => void;
+  onSave?: () => void;
 }
 
 const Toolbar: React.FC<ToolbarProps> = ({ 
@@ -20,7 +21,8 @@ const Toolbar: React.FC<ToolbarProps> = ({
   currentFolderId, 
   onChangeFolder, 
   currentScriptName,
-  onRenameScript 
+  onRenameScript,
+  onSave
 }) => {
   const [scriptNameInput, setScriptNameInput] = useState<string>('');
   const [isEditingScriptName, setIsEditingScriptName] = useState<boolean>(false);
@@ -150,7 +152,7 @@ const Toolbar: React.FC<ToolbarProps> = ({
       </div>
       <div className="toolbar-row toolbar-row-bottom-flex">
         <div className="toolbar-bottom-left">
-          <button className="toolbar-btn"><span role="img" aria-label="save">💾</span> Speichern</button>
+          <button className="toolbar-btn" onClick={onSave}><span role="img" aria-label="save">💾</span> Speichern</button>
           <button className="toolbar-btn"><span role="img" aria-label="cancel">✖</span> Abbrechen</button>
           <button className="toolbar-btn"><span role="img" aria-label="check">✔</span> Check blocks</button>
           <button className="toolbar-btn" disabled>Show code</button>
