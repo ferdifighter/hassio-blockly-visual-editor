@@ -31,7 +31,9 @@
     "theme": "list(auto|light|dark)?",
     "language": "list(system|de|en)?",
     "hass_api_url": "str?",
-    "hass_token": "str?"
+    "hass_token": "str?",
+    "ha_url": "str?",
+    "ha_token": "str?"
   },
   "ingress": true,
   "ingress_port": 8099,
@@ -41,5 +43,9 @@
   "auth_api": true,
   "ingress_stream": true,
   "hassio_role": "admin",
-  "hassio_api": true
+  "hassio_api": true,
+  "environment": {
+    "SUPERVISOR_TOKEN": "{{ supervisor_token }}",
+    "SUPERVISOR_URL": "{{ supervisor_url }}"
+  }
 } 

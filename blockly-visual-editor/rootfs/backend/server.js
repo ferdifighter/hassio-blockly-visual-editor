@@ -22,12 +22,37 @@ if (!fs.existsSync(SCRIPTS_PATH)) {
   console.log('Lege /data/scripts.json an (verschachteltes Objekt-Format mit Root).');
 }
 
-const AUTOMATIONS_PATH = '/data/automations.yaml';
+// Blockly-Daten Verzeichnis und zentrale Datei
+const BLOCKLY_DATA_DIR = '/config/blockly_visual_editor';
+const BLOCKLY_DATA_FILE = path.join(BLOCKLY_DATA_DIR, 'blockly_data.json');
+const AUTOMATIONS_PATH = '/config/automations.yaml';
+
+// Blockly-Daten Verzeichnis erstellen, falls nicht vorhanden
+if (!fs.existsSync(BLOCKLY_DATA_DIR)) {
+  fs.mkdirSync(BLOCKLY_DATA_DIR, { recursive: true });
+  console.log('Erstelle Blockly-Daten Verzeichnis:', BLOCKLY_DATA_DIR);
+}
+
+// Zentrale Blockly-Daten Datei erstellen, falls nicht vorhanden
+if (!fs.existsSync(BLOCKLY_DATA_FILE)) {
+  const initialBlocklyData = {};
+  fs.writeFileSync(BLOCKLY_DATA_FILE, JSON.stringify(initialBlocklyData, null, 2));
+  console.log('Lege zentrale Blockly-Daten Datei an:', BLOCKLY_DATA_FILE);
+}
 
 // Beim Start: automations.yaml anlegen, falls nicht vorhanden
 if (!fs.existsSync(AUTOMATIONS_PATH)) {
   fs.writeFileSync(AUTOMATIONS_PATH, yaml.dump([]));
-  console.log('Lege /data/automations.yaml an (leeres Array).');
+  console.log('Lege /config/automations.yaml an (leeres Array).');
+} else {
+  // Prüfe vorhandene Automatisierungen
+  try {
+    const data = fs.readFileSync(AUTOMATIONS_PATH, 'utf8');
+    const automations = yaml.load(data) || [];
+    console.log(`Lade ${automations.length} vorhandene Automatisierung(en) aus /config/automations.yaml`);
+  } catch (e) {
+    console.error('Fehler beim Lesen vorhandener Automatisierungen:', e.message);
+  }
 }
 
 app.use(express.json());
@@ -39,6 +64,49 @@ app.use((req, res, next) => {
   res.header('Access-Control-Allow-Headers', 'Content-Type');
   next();
 });
+
+// Hilfsfunktionen für zentrale Blockly-Datenverwaltung
+function loadBlocklyData() {
+  try {
+    if (fs.existsSync(BLOCKLY_DATA_FILE)) {
+      const data = fs.readFileSync(BLOCKLY_DATA_FILE, 'utf8');
+      return JSON.parse(data);
+    }
+  } catch (e) {
+    console.error('Fehler beim Lesen der Blockly-Daten:', e.message);
+  }
+  return {};
+}
+
+function saveBlocklyData(data) {
+  try {
+    fs.writeFileSync(BLOCKLY_DATA_FILE, JSON.stringify(data, null, 2));
+    return true;
+  } catch (e) {
+    console.error('Fehler beim Speichern der Blockly-Daten:', e.message);
+    return false;
+  }
+}
+
+function getBlocklyDataForAutomation(automationId) {
+  const allData = loadBlocklyData();
+  return allData[automationId] || null;
+}
+
+function saveBlocklyDataForAutomation(automationId, blocklyData) {
+  const allData = loadBlocklyData();
+  allData[automationId] = blocklyData;
+  return saveBlocklyData(allData);
+}
+
+function deleteBlocklyDataForAutomation(automationId) {
+  const allData = loadBlocklyData();
+  if (allData[automationId]) {
+    delete allData[automationId];
+    return saveBlocklyData(allData);
+  }
+  return true;
+}
 
 // 1. API-Routen
 app.get('/api/scripts', (req, res) => {
@@ -140,7 +208,68 @@ app.get('/api/automations', (req, res) => {
     }
     try {
       const automations = yaml.load(data) || [];
-      res.json(automations);
+      
+      // Füge Blockly-Metadaten hinzu
+      const automationsWithBlockly = automations.map(automation => {
+        const blocklyData = getBlocklyDataForAutomation(automation.id);
+        
+        return {
+          ...automation,
+          hasBlocklyData: !!blocklyData,
+          lastBlocklyModified: blocklyData?.lastModified,
+          syncedFromHA: blocklyData?.syncedFromHA || false
+        };
+      });
+      
+      res.json(automationsWithBlockly);
+    } catch (e) {
+      res.status(500).json({ error: 'YAML-Parsing-Fehler: ' + e.message });
+    }
+  });
+});
+
+// API: Alle Automatisierungen synchronisieren
+app.post('/api/automations/sync', (req, res) => {
+  fs.readFile(AUTOMATIONS_PATH, 'utf8', (err, data) => {
+    if (err) {
+      console.error('Fehler beim Lesen von automations.yaml:', err);
+      return res.status(500).json({ error: `Konnte automations.yaml nicht lesen: ${err.message}` });
+    }
+    
+    try {
+      const automations = yaml.load(data) || [];
+      let syncedCount = 0;
+      
+      automations.forEach(automation => {
+        const haModified = automation.last_modified || new Date().toISOString();
+        
+        try {
+          const blocklyData = getBlocklyDataForAutomation(automation.id);
+          const blocklyModified = blocklyData?.lastModified || '1970-01-01T00:00:00Z';
+          
+          if (new Date(haModified) > new Date(blocklyModified)) {
+            const updatedBlockly = {
+              id: automation.id,
+              alias: automation.alias,
+              xml: convertAutomationToXml(automation),
+              lastModified: haModified,
+              syncedFromHA: true
+            };
+            
+            saveBlocklyDataForAutomation(automation.id, updatedBlockly);
+            syncedCount++;
+            console.log(`Automatisierung ${automation.id} synchronisiert`);
+          }
+        } catch (e) {
+          console.error(`Fehler beim Synchronisieren von ${automation.id}:`, e.message);
+        }
+      });
+      
+      res.json({ 
+        success: true, 
+        message: `${syncedCount} Automatisierung(en) synchronisiert`,
+        syncedCount 
+      });
     } catch (e) {
       res.status(500).json({ error: 'YAML-Parsing-Fehler: ' + e.message });
     }
@@ -149,76 +278,323 @@ app.get('/api/automations', (req, res) => {
 
 // API: Einzelne Automatisierung nach ID laden
 app.get('/api/automations/:id', (req, res) => {
-  fs.readFile(AUTOMATIONS_PATH, 'utf8', (err, data) => {
+  // 1. HA-Automatisierung laden (YAML) - das ist die Quelle der Wahrheit
+  fs.readFile(AUTOMATIONS_PATH, 'utf8', (err, yamlData) => {
     if (err) {
       return res.status(500).json({ error: `Konnte automations.yaml nicht lesen: ${err.message}` });
     }
+    
     try {
-      const automations = yaml.load(data) || [];
-      const automation = automations.find(a => a.id == req.params.id);
-      if (!automation) return res.status(404).json({ error: 'Nicht gefunden' });
-      res.json(automation);
+      const automations = yaml.load(yamlData) || [];
+      const haAutomation = automations.find(a => a.id == req.params.id);
+      
+      if (!haAutomation) {
+        return res.status(404).json({ error: 'HA-Automatisierung nicht gefunden' });
+      }
+      
+      // 2. Blockly-Daten laden (XML) - falls vorhanden
+      let blockly = getBlocklyDataForAutomation(req.params.id);
+      
+      // 3. Prüfe ob HA-Automatisierung neuer ist als Blockly-Daten
+      const haModified = haAutomation.last_modified || new Date().toISOString();
+      const blocklyModified = blockly?.lastModified || '1970-01-01T00:00:00Z';
+      
+      if (new Date(haModified) > new Date(blocklyModified)) {
+        console.log(`HA-Automatisierung ist neuer als Blockly-Daten für ${req.params.id}`);
+        // HA-Automatisierung wurde extern geändert, synchronisiere Blockly-Daten
+        const updatedBlockly = {
+          id: req.params.id,
+          alias: haAutomation.alias,
+          xml: convertAutomationToXml(haAutomation), // Konvertiere HA zu XML
+          lastModified: haModified,
+          syncedFromHA: true
+        };
+        
+        saveBlocklyDataForAutomation(req.params.id, updatedBlockly);
+        console.log('Blockly-Daten mit HA-Automatisierung synchronisiert');
+        
+        blockly = updatedBlockly;
+      }
+      
+      // 4. Kombiniere HA-Automatisierung mit Blockly-Daten
+      const combinedAutomation = {
+        ...haAutomation,
+        xml: blockly?.xml || '<xml xmlns="https://developers.google.com/blockly/xml"/>',
+        lastModified: blockly?.lastModified || haModified,
+        syncedFromHA: blockly?.syncedFromHA || false
+      };
+      
+      res.json(combinedAutomation);
     } catch (e) {
       res.status(500).json({ error: 'YAML-Parsing-Fehler: ' + e.message });
     }
   });
 });
 
+// Hilfsfunktion: XML zu HA-Automatisierung konvertieren
+function convertXmlToAutomation(xmlText, alias) {
+  // Wenn keine XML-Daten vorhanden sind, leere Automatisierung zurückgeben
+  if (!xmlText || xmlText === '<xml xmlns="https://developers.google.com/blockly/xml"/>') {
+    return {
+      triggers: [],
+      conditions: [],
+      actions: []
+    };
+  }
+  
+  console.log('Konvertiere XML zu Automatisierung:', xmlText);
+  
+  try {
+    // Einfacher XML-Parser für Blockly-Blöcke
+    const triggers = [];
+    const conditions = [];
+    const actions = [];
+    
+    // Zeit-Trigger parsen
+    const timeTriggerMatches = xmlText.match(/<block type="ha_time_trigger"[^>]*>.*?<field name="TIME">([^<]+)<\/field>.*?<\/block>/gs);
+    if (timeTriggerMatches) {
+      timeTriggerMatches.forEach(match => {
+        const timeMatch = match.match(/<field name="TIME">([^<]+)<\/field>/);
+        if (timeMatch) {
+          triggers.push({
+            trigger: 'time',
+            at: timeMatch[1]
+          });
+        }
+      });
+    }
+    
+    // State-Trigger parsen
+    const stateTriggerMatches = xmlText.match(/<block type="ha_state_trigger"[^>]*>.*?<field name="ENTITY">([^<]+)<\/field>.*?<\/block>/gs);
+    if (stateTriggerMatches) {
+      stateTriggerMatches.forEach(match => {
+        const entityMatch = match.match(/<field name="ENTITY">([^<]+)<\/field>/);
+        if (entityMatch) {
+          triggers.push({
+            trigger: 'state',
+            entity_id: entityMatch[1]
+          });
+        }
+      });
+    }
+    
+    // Notify-Actions parsen
+    const notifyMatches = xmlText.match(/<block type="ha_notify"[^>]*>.*?<field name="MESSAGE">([^<]+)<\/field>.*?<\/block>/gs);
+    if (notifyMatches) {
+      notifyMatches.forEach(match => {
+        const messageMatch = match.match(/<field name="MESSAGE">([^<]+)<\/field>/);
+        if (messageMatch) {
+          actions.push({
+            action: 'notify.notify',
+            data: {
+              message: messageMatch[1]
+            }
+          });
+        }
+      });
+    }
+    
+    // Turn on/off Actions parsen
+    const turnMatches = xmlText.match(/<block type="ha_([^_]+)_([^"]+)"[^>]*>.*?<field name="ENTITY">([^<]+)<\/field>.*?<\/block>/gs);
+    if (turnMatches) {
+      turnMatches.forEach(match => {
+        const turnMatch = match.match(/<block type="ha_([^_]+)_([^"]+)"[^>]*>.*?<field name="ENTITY">([^<]+)<\/field>/);
+        if (turnMatch) {
+          const domain = turnMatch[1];
+          const service = turnMatch[2];
+          const entity = turnMatch[3];
+          
+          actions.push({
+            service: `${domain}.${service}`,
+            entity_id: entity
+          });
+        }
+      });
+    }
+    
+    console.log('Konvertierte Automatisierung:', { triggers, conditions, actions });
+    
+    return {
+      triggers: triggers,
+      conditions: conditions,
+      actions: actions
+    };
+    
+  } catch (error) {
+    console.error('Fehler beim XML-Parsing:', error);
+    // Bei Fehlern leere Automatisierung zurückgeben
+    return {
+      triggers: [],
+      conditions: [],
+      actions: []
+    };
+  }
+}
+
+// Hilfsfunktion: HA-Automatisierung zu XML konvertieren
+function convertAutomationToXml(automation) {
+  // Erstelle eine einfache XML-Repräsentation der HA-Automatisierung
+  let xml = '<xml xmlns="https://developers.google.com/blockly/xml">';
+  
+  // Trigger-Blöcke mit verschachtelten Actions
+  if (automation.triggers && automation.triggers.length > 0) {
+    automation.triggers.forEach((trigger, triggerIndex) => {
+      if (trigger.trigger === 'time' && trigger.at) {
+        xml += `<block type="ha_time_trigger" id="trigger_${triggerIndex}" x="70" y="${30 + triggerIndex * 100}">`;
+        xml += `<field name="TIME">${trigger.at}</field>`;
+        
+        // Action-Blöcke innerhalb des Triggers verschachteln
+        if (automation.actions && automation.actions.length > 0) {
+          xml += '<statement name="DO">';
+          automation.actions.forEach((action, actionIndex) => {
+            if (action.service === 'notify.notify' || action.action === 'notify.notify') {
+              xml += `<block type="ha_notify" id="action_${actionIndex}">`;
+              xml += `<field name="MESSAGE">${action.data?.message || ''}</field>`;
+              xml += '</block>';
+            } else if ((action.service && action.service.includes('turn_')) || (action.action && action.action.includes('turn_'))) {
+              const serviceName = action.service || action.action;
+              const domain = serviceName.split('.')[0];
+              const service = serviceName.split('.')[1];
+              xml += `<block type="ha_${domain}_${service}" id="action_${actionIndex}">`;
+              xml += `<field name="ENTITY">${action.entity_id || ''}</field>`;
+              xml += '</block>';
+            }
+          });
+          xml += '</statement>';
+        }
+        
+        xml += '</block>';
+      } else if (trigger.trigger === 'state') {
+        xml += `<block type="ha_state_trigger" id="trigger_${triggerIndex}" x="70" y="${30 + triggerIndex * 100}">`;
+        xml += `<field name="ENTITY">${trigger.entity_id || ''}</field>`;
+        
+        // Action-Blöcke innerhalb des Triggers verschachteln
+        if (automation.actions && automation.actions.length > 0) {
+          xml += '<statement name="DO">';
+          automation.actions.forEach((action, actionIndex) => {
+            if (action.service === 'notify.notify' || action.action === 'notify.notify') {
+              xml += `<block type="ha_notify" id="action_${actionIndex}">`;
+              xml += `<field name="MESSAGE">${action.data?.message || ''}</field>`;
+              xml += '</block>';
+            } else if ((action.service && action.service.includes('turn_')) || (action.action && action.action.includes('turn_'))) {
+              const serviceName = action.service || action.action;
+              const domain = serviceName.split('.')[0];
+              const service = serviceName.split('.')[1];
+              xml += `<block type="ha_${domain}_${service}" id="action_${actionIndex}">`;
+              xml += `<field name="ENTITY">${action.entity_id || ''}</field>`;
+              xml += '</block>';
+            }
+          });
+          xml += '</statement>';
+        }
+        
+        xml += '</block>';
+      }
+    });
+  }
+  
+  xml += '</xml>';
+  return xml;
+}
+
 // API: Automatisierung speichern/aktualisieren
 app.put('/api/automations/:id', (req, res) => {
   console.log('--- PUT /api/automations/:id ---');
   console.log('ID:', req.params.id);
   console.log('Body:', JSON.stringify(req.body, null, 2));
-  fs.readFile(AUTOMATIONS_PATH, 'utf8', (err, data) => {
-    if (err) {
-      console.error('Fehler beim Lesen von automations.yaml:', err);
-      return res.status(500).json({ error: `Konnte automations.yaml nicht lesen: ${err.message}` });
-    }
-    let automations = [];
-    try {
-      automations = yaml.load(data) || [];
-    } catch (e) {
-      console.error('YAML-Parsing-Fehler:', e);
-      return res.status(500).json({ error: 'YAML-Parsing-Fehler: ' + e.message });
-    }
-    console.log('Automations vor Update:', JSON.stringify(automations, null, 2));
-    const idx = automations.findIndex(a => a.id == req.params.id);
-    if (idx >= 0) {
-      automations[idx] = req.body;
-      console.log('Automatisierung aktualisiert:', JSON.stringify(req.body, null, 2));
-    } else {
-      automations.push(req.body);
-      console.log('Automatisierung hinzugefügt:', JSON.stringify(req.body, null, 2));
-    }
-    console.log('Automations nach Update:', JSON.stringify(automations, null, 2));
-    fs.writeFile(AUTOMATIONS_PATH, yaml.dump(automations), async err2 => {
+  
+  // 1. Blockly-Daten (XML) in zentrale Datei speichern
+  const blocklyData = {
+    id: req.params.id,
+    alias: req.body.alias,
+    xml: req.body.xml,
+    lastModified: new Date().toISOString()
+  };
+  
+  if (!saveBlocklyDataForAutomation(req.params.id, blocklyData)) {
+    console.error('Fehler beim Speichern der Blockly-Daten');
+    return res.status(500).json({ error: 'Konnte Blockly-Daten nicht speichern' });
+  }
+  console.log('Blockly-Daten gespeichert für:', req.params.id);
+    
+    // 2. XML zu HA-Automatisierung konvertieren
+    console.log('=== XML-zu-Automatisierung Konvertierung ===');
+    console.log('Eingehende XML:', req.body.xml);
+    console.log('Alias:', req.body.alias);
+    
+    const automationLogic = convertXmlToAutomation(req.body.xml, req.body.alias);
+    
+    console.log('Konvertierte Logik:', JSON.stringify(automationLogic, null, 2));
+    
+    // 3. HA-Automatisierung in automations.yaml speichern
+    const haAutomation = {
+      id: req.params.id,
+      alias: req.body.alias,
+      description: req.body.description || '',
+      triggers: automationLogic.triggers,
+      conditions: automationLogic.conditions,
+      actions: automationLogic.actions,
+      mode: req.body.mode || 'single'
+    };
+    
+    console.log('Finale HA-Automatisierung:', JSON.stringify(haAutomation, null, 2));
+    
+    fs.readFile(AUTOMATIONS_PATH, 'utf8', (err2, data) => {
       if (err2) {
-        console.error('Fehler beim Schreiben von automations.yaml:', err2);
-        return res.status(500).json({ error: `Konnte automations.yaml nicht speichern: ${err2.message}` });
+        console.error('Fehler beim Lesen von automations.yaml:', err2);
+        return res.status(500).json({ error: `Konnte automations.yaml nicht lesen: ${err2.message}` });
       }
-      console.log('Automatisierung erfolgreich gespeichert!');
-      // Nach dem Speichern: Automationen in Home Assistant neu laden
-      const HA_TOKEN = process.env.SUPERVISOR_TOKEN;
-      const HA_URL = process.env.SUPERVISOR_URL || 'http://supervisor/core';
-      console.log(`SUPERVISOR_TOKEN verfügbar: ${!!process.env.SUPERVISOR_TOKEN}`);
-      if (HA_TOKEN && HA_URL) {
-        try {
-          const reloadResult = await axios.post(
-            `${HA_URL}/api/services/automation/reload`,
-            {},
-            { headers: { Authorization: `Bearer ${HA_TOKEN}`, 'Content-Type': 'application/json' } }
-          );
-          console.log('Automationen in Home Assistant neu geladen:', reloadResult.data);
-        } catch (reloadErr) {
-          console.error('Fehler beim Reload der Automationen:', reloadErr.response?.data || reloadErr.message);
-        }
+      let automations = [];
+      try {
+        automations = yaml.load(data) || [];
+      } catch (e) {
+        console.error('YAML-Parsing-Fehler:', e);
+        return res.status(500).json({ error: 'YAML-Parsing-Fehler: ' + e.message });
+      }
+      
+      const idx = automations.findIndex(a => a.id == req.params.id);
+      if (idx >= 0) {
+        automations[idx] = haAutomation;
+        console.log('HA-Automatisierung aktualisiert:', JSON.stringify(haAutomation, null, 2));
       } else {
-        console.warn('HA_TOKEN oder HA_URL nicht gesetzt, Automationen werden nicht automatisch neu geladen.');
+        automations.push(haAutomation);
+        console.log('HA-Automatisierung hinzugefügt:', JSON.stringify(haAutomation, null, 2));
       }
-      res.json({ success: true });
+      
+      fs.writeFile(AUTOMATIONS_PATH, yaml.dump(automations), async (err3) => {
+        if (err3) {
+          console.error('Fehler beim Schreiben von automations.yaml:', err3);
+          return res.status(500).json({ error: `Konnte automations.yaml nicht speichern: ${err3.message}` });
+        }
+        console.log('HA-Automatisierung erfolgreich gespeichert!');
+        
+        // 3. Nach dem Speichern: Automationen in Home Assistant neu laden
+        const { HA_TOKEN, HA_URL } = getHACredentials();
+        if (HA_TOKEN && HA_URL) {
+          try {
+            console.log('Versuche Automatisierungen neu zu laden...');
+            console.log('URL:', `${HA_URL}/api/services/automation/reload`);
+            console.log('Token verfügbar:', !!HA_TOKEN);
+            
+            const reloadResult = await axios.post(
+              `${HA_URL}/api/services/automation/reload`,
+              {},
+              { headers: { Authorization: `Bearer ${HA_TOKEN}`, 'Content-Type': 'application/json' } }
+            );
+            console.log('Automationen in Home Assistant neu geladen:', reloadResult.data);
+          } catch (reloadErr) {
+            console.error('Fehler beim Reload der Automationen:', reloadErr.response?.data || reloadErr.message);
+            console.error('Response Status:', reloadErr.response?.status);
+            console.error('Response Headers:', reloadErr.response?.headers);
+          }
+        } else {
+          console.warn('HA_TOKEN oder HA_URL nicht gesetzt, Automationen werden nicht automatisch neu geladen.');
+          console.log('Verfügbare Credentials:', { HA_TOKEN: !!HA_TOKEN, HA_URL: !!HA_URL });
+        }
+        res.json({ success: true });
+      });
     });
   });
-});
 
 function slugify(str) {
   return str
@@ -234,25 +610,102 @@ function slugify(str) {
 function getEntityIdByAutomationId(automationId) {
   // Lade automations.yaml und suche die Automatisierung mit id === automationId
   try {
-    const yaml = require('js-yaml');
-    const fs = require('fs');
     const data = fs.readFileSync(AUTOMATIONS_PATH, 'utf8');
     const automations = yaml.load(data) || [];
     const automation = automations.find(a => a.id == automationId);
     if (!automation || !automation.alias) return null;
-    return 'automation.' + slugify(automation.alias);
+    
+    // Verwende den Alias direkt als Entity-ID, da Home Assistant den Alias als Entity-ID verwendet
+    // Entferne nur problematische Zeichen und ersetze Leerzeichen durch Unterstriche
+    const entityId = automation.alias
+      .toLowerCase()
+      .replace(/[^a-z0-9\s_-]/g, '') // Entferne problematische Zeichen
+      .replace(/\s+/g, '_') // Ersetze Leerzeichen durch Unterstriche
+      .replace(/^_+|_+$/g, ''); // Entferne führende/folgende Unterstriche
+    
+    return 'automation.' + entityId;
   } catch (e) {
+    console.error('Fehler beim Lesen der automations.yaml:', e.message);
     return null;
   }
 }
 
+// Hilfsfunktion: Home Assistant API-Credentials ermitteln
+function getHACredentials() {
+  // Primär den automatischen Supervisor-Token verwenden (sicherer und automatisch)
+  let HA_TOKEN = process.env.SUPERVISOR_TOKEN;
+  let HA_URL = process.env.SUPERVISOR_URL || 'http://supervisor/core';
+  
+  console.log('Token-Suche (Supervisor-Priorität):', {
+    SUPERVISOR_TOKEN: !!process.env.SUPERVISOR_TOKEN,
+    SUPERVISOR_TOKEN_LENGTH: process.env.SUPERVISOR_TOKEN ? process.env.SUPERVISOR_TOKEN.length : 0,
+    HASSIO_TOKEN: !!process.env.HASSIO_TOKEN,
+    HA_TOKEN: !!process.env.HA_TOKEN,
+    hass_token: !!process.env.hass_token
+  });
+  
+  console.log('URL-Suche:', {
+    SUPERVISOR_URL: process.env.SUPERVISOR_URL,
+    HASSIO_URL: process.env.HASSIO_URL,
+    HA_URL: process.env.HA_URL,
+    hass_api_url: process.env.hass_api_url
+  });
+  
+  // Fallback: Nur wenn Supervisor-Token nicht verfügbar ist
+  if (!HA_TOKEN) {
+    console.log('SUPERVISOR_TOKEN nicht verfügbar, versuche Fallback...');
+    HA_TOKEN = process.env.HASSIO_TOKEN || process.env.HA_TOKEN || process.env.hass_token;
+    HA_URL = process.env.HASSIO_URL || process.env.HA_URL || process.env.hass_api_url || 'http://supervisor/core';
+  }
+  
+  // Wenn immer noch kein Token verfügbar ist
+  if (!HA_TOKEN) {
+    console.log('Kein Token verfügbar - verwende Ingress ohne Token');
+    HA_URL = 'http://supervisor/core';
+    HA_TOKEN = null;
+  }
+  
+  console.log('Finale Credentials:', {
+    HA_TOKEN: HA_TOKEN ? `gesetzt (Länge: ${HA_TOKEN.length})` : 'nicht gesetzt',
+    HA_URL: HA_URL,
+    'Verwendeter Token-Typ': HA_TOKEN === process.env.SUPERVISOR_TOKEN ? 'SUPERVISOR_TOKEN' : 
+                           HA_TOKEN === process.env.HASSIO_TOKEN ? 'HASSIO_TOKEN' :
+                           HA_TOKEN === process.env.HA_TOKEN ? 'HA_TOKEN' :
+                           HA_TOKEN === process.env.hass_token ? 'hass_token' : 'kein Token'
+  });
+  
+  return { HA_TOKEN, HA_URL };
+}
+
 // Automatisierung aktivieren
 app.post('/api/automations/:id/start', async (req, res) => {
-  const HA_TOKEN = process.env.SUPERVISOR_TOKEN;
-  const HA_URL = process.env.SUPERVISOR_URL || 'http://supervisor/core';
-  if (!HA_TOKEN || !HA_URL) return res.status(500).json({ error: 'HA_TOKEN oder HA_URL nicht gesetzt' });
+  console.log('=== Automatisierung aktivieren ===');
+  console.log('ID:', req.params.id);
+  
+  const { HA_TOKEN, HA_URL } = getHACredentials();
+  
+  console.log('Verfügbare Umgebungsvariablen:', {
+    SUPERVISOR_TOKEN: !!process.env.SUPERVISOR_TOKEN,
+    HASSIO_TOKEN: !!process.env.HASSIO_TOKEN,
+    HA_TOKEN: !!process.env.HA_TOKEN,
+    hass_token: !!process.env.hass_token,
+    SUPERVISOR_URL: process.env.SUPERVISOR_URL,
+    HASSIO_URL: process.env.HASSIO_URL,
+    HA_URL: process.env.HA_URL,
+    hass_api_url: process.env.hass_api_url
+  });
+  
+  if (!HA_URL) {
+    console.error('Keine gültige Home Assistant URL gefunden');
+    return res.status(500).json({ 
+      error: 'Home Assistant URL nicht verfügbar',
+      available_vars: Object.keys(process.env).filter(key => key.includes('SUPERVISOR') || key.includes('HASSIO') || key.includes('HA_') || key.includes('hass_'))
+    });
+  }
 
   const entity_id = getEntityIdByAutomationId(req.params.id);
+  console.log('Entity ID:', entity_id);
+  
   if (!entity_id) {
     // Fehlerursache genauer ausgeben
     try {
@@ -272,23 +725,39 @@ app.post('/api/automations/:id/start', async (req, res) => {
   }
 
   try {
+    console.log('Sende Aktivierungs-Request an:', `${HA_URL}/api/services/automation/turn_on`);
+    console.log('Entity ID:', entity_id);
+    
+    const axiosConfig = { headers: { 'Content-Type': 'application/json' } };
+    if (HA_TOKEN) axiosConfig.headers['Authorization'] = `Bearer ${HA_TOKEN}`;
+
     const result = await axios.post(
       `${HA_URL}/api/services/automation/turn_on`,
       { entity_id },
-      { headers: { Authorization: `Bearer ${HA_TOKEN}`, 'Content-Type': 'application/json' } }
+      axiosConfig
     );
+    console.log('Aktivierung erfolgreich:', result.data);
     res.json({ success: true, result: result.data });
   } catch (e) {
     console.error('Fehler beim Aktivieren:', e.response?.data || e.message);
+    console.error('Response Status:', e.response?.status);
+    console.error('Response Headers:', e.response?.headers);
     res.status(500).json({ error: e.response?.data || e.message });
   }
 });
 
 // Automatisierung deaktivieren
 app.post('/api/automations/:id/stop', async (req, res) => {
-  const HA_TOKEN = process.env.SUPERVISOR_TOKEN;
-  const HA_URL = process.env.SUPERVISOR_URL || 'http://supervisor/core';
-  if (!HA_TOKEN || !HA_URL) return res.status(500).json({ error: 'HA_TOKEN oder HA_URL nicht gesetzt' });
+  const { HA_TOKEN, HA_URL } = getHACredentials();
+  
+  if (!HA_URL) {
+    console.error('Keine gültige Home Assistant URL gefunden');
+    return res.status(500).json({ 
+      error: 'Home Assistant URL nicht verfügbar',
+      available_vars: Object.keys(process.env).filter(key => key.includes('SUPERVISOR') || key.includes('HASSIO') || key.includes('HA_') || key.includes('hass_'))
+    });
+  }
+  
   const entity_id = getEntityIdByAutomationId(req.params.id);
   if (!entity_id) {
     try {
@@ -307,10 +776,13 @@ app.post('/api/automations/:id/stop', async (req, res) => {
     }
   }
   try {
+    const axiosConfig = { headers: { 'Content-Type': 'application/json' } };
+    if (HA_TOKEN) axiosConfig.headers['Authorization'] = `Bearer ${HA_TOKEN}`;
+
     const result = await axios.post(
       `${HA_URL}/api/services/automation/turn_off`,
       { entity_id },
-      { headers: { Authorization: `Bearer ${HA_TOKEN}`, 'Content-Type': 'application/json' } }
+      axiosConfig
     );
     res.json({ success: true, result: result.data });
   } catch (e) {
@@ -321,15 +793,37 @@ app.post('/api/automations/:id/stop', async (req, res) => {
 
 // Status einer Automatisierung abfragen
 app.get('/api/automations/:id/status', async (req, res) => {
-  const HA_TOKEN = process.env.SUPERVISOR_TOKEN;
-  const HA_URL = process.env.SUPERVISOR_URL || 'http://supervisor/core';
-  if (!HA_TOKEN || !HA_URL) return res.status(500).json({ error: 'HA_TOKEN oder HA_URL nicht gesetzt' });
-  const entity_id = getEntityIdByAutomationId(req.params.id);
-  if (!entity_id) {
-    try {
-      const data = fs.readFileSync(AUTOMATIONS_PATH, 'utf8');
-      const automations = yaml.load(data) || [];
-      const automation = automations.find(a => a.id == req.params.id);
+  console.log('=== Status abfragen ===');
+  console.log('ID:', req.params.id);
+  
+  try {
+    // Debug: Lade alle Automatisierungen
+    const data = fs.readFileSync(AUTOMATIONS_PATH, 'utf8');
+    const automations = yaml.load(data) || [];
+    console.log('Alle Automatisierungen in automations.yaml:', automations.map(a => ({ id: a.id, alias: a.alias })));
+    
+    const automation = automations.find(a => a.id == req.params.id);
+    console.log('Gefundene Automatisierung:', automation);
+    
+    const { HA_TOKEN, HA_URL } = getHACredentials();
+    
+    console.log('HA_TOKEN verfügbar:', !!HA_TOKEN);
+    console.log('HA_TOKEN Länge:', HA_TOKEN ? HA_TOKEN.length : 0);
+    console.log('HA_URL:', HA_URL);
+    console.log('Alle Umgebungsvariablen:', Object.keys(process.env).filter(key => key.includes('SUPERVISOR') || key.includes('HASSIO') || key.includes('HA_') || key.includes('hass_')));
+    
+    if (!HA_URL) {
+      console.log('Keine gültige Home Assistant URL gefunden - gebe Fehler zurück');
+      return res.status(500).json({ 
+        error: 'Home Assistant URL nicht verfügbar',
+        available_vars: Object.keys(process.env).filter(key => key.includes('SUPERVISOR') || key.includes('HASSIO') || key.includes('HA_') || key.includes('hass_'))
+      });
+    }
+    
+    const entity_id = getEntityIdByAutomationId(req.params.id);
+    console.log('Entity ID:', entity_id);
+    
+    if (!entity_id) {
       if (!automation) {
         return res.status(404).json({ error: `Automatisierung mit id '${req.params.id}' nicht gefunden.`, automations });
       }
@@ -337,18 +831,34 @@ app.get('/api/automations/:id/status', async (req, res) => {
         return res.status(400).json({ error: `Automatisierung mit id '${req.params.id}' hat keinen alias.`, automation });
       }
       return res.status(400).json({ error: `Unbekannter Fehler bei entity_id-Ermittlung.`, automation });
-    } catch (e) {
-      return res.status(500).json({ error: 'Fehler beim Lesen der automations.yaml: ' + e.message });
     }
-  }
-  try {
+    
+    console.log('Sende Status-Request an:', `${HA_URL}/api/states/${entity_id}`);
+    
+    const axiosConfig = { };
+    if (HA_TOKEN) axiosConfig.headers = { Authorization: `Bearer ${HA_TOKEN}` };
     const result = await axios.get(
       `${HA_URL}/api/states/${entity_id}`,
-      { headers: { Authorization: `Bearer ${HA_TOKEN}` } }
+      axiosConfig
     );
+    console.log('Status erfolgreich abgerufen:', result.data);
     res.json({ state: result.data.state, attributes: result.data.attributes });
   } catch (e) {
     console.error('Fehler beim Status-Check:', e.response?.data || e.message);
+    console.error('Response Status:', e.response?.status);
+    
+    // Wenn die Entity nicht gefunden wird (404), bedeutet das, dass die Automatisierung
+    // noch nicht in Home Assistant registriert ist. Das ist normal nach dem Speichern.
+    if (e.response && e.response.status === 404) {
+      // Automatisierung existiert in automations.yaml aber noch nicht in Home Assistant
+      // Gebe einen Standard-Status zurück
+      return res.json({ state: 'off', attributes: { 
+        friendly_name: 'Automatisierung wird geladen...',
+        status: 'not_loaded'
+      }});
+    }
+    
+    // Für andere Fehler gebe den ursprünglichen Fehler zurück
     res.status(500).json({ error: e.response?.data || e.message });
   }
 });
@@ -367,7 +877,12 @@ app.get('*', (req, res) => {
 app.listen(PORT, HOST, () => {
   console.log(`Backend läuft auf http://${HOST}:${PORT}`);
   console.log(`scripts.json Pfad: ${SCRIPTS_PATH}`);
-  console.log(`HA_TOKEN verfügbar: ${process.env.SUPERVISOR_TOKEN ? 'Ja' : 'Nein'}`);
-  console.log(`HA_URL: ${process.env.SUPERVISOR_URL || 'http://supervisor/core'}`);
+  console.log(`Blockly-Daten Verzeichnis: ${BLOCKLY_DATA_DIR}`);
+  console.log(`automations.yaml Pfad: ${AUTOMATIONS_PATH}`);
+  console.log(`SUPERVISOR_TOKEN verfügbar: ${process.env.SUPERVISOR_TOKEN ? 'Ja' : 'Nein'}`);
+  console.log(`hass_token verfügbar: ${process.env.hass_token ? 'Ja' : 'Nein'}`);
+  console.log(`hass_token Länge: ${process.env.hass_token ? process.env.hass_token.length : 0}`);
+  console.log(`SUPERVISOR_URL: ${process.env.SUPERVISOR_URL || 'http://supervisor/core'}`);
+  console.log(`hass_api_url: ${process.env.hass_api_url || 'nicht gesetzt'}`);
   console.log(`Toolbox-Pfad: /config/www/toolbox`);
 }); 
