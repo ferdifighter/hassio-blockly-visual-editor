@@ -9,8 +9,9 @@ fi
 
 echo "Starte run.sh..."
 
-# bashio lädt automatisch alle Konfigurationsoptionen als Umgebungsvariablen
-# Die Variablen sind direkt verfügbar: hass_token, hass_api_url, etc.
+# Umgebungsvariablen manuell setzen, da bashio die Template-Strings nicht auflöst
+export SUPERVISOR_TOKEN="$(bashio::supervisor.token)"
+export SUPERVISOR_URL="$(bashio::supervisor.url)"
 
 # Debug: Alle relevanten Umgebungsvariablen ausgeben
 echo "Verfügbare Umgebungsvariablen:"

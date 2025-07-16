@@ -43,9 +43,5 @@
   "auth_api": true,
   "ingress_stream": true,
   "hassio_role": "admin",
-  "hassio_api": true,
-  "environment": {
-    "SUPERVISOR_TOKEN": "{{ supervisor_token }}",
-    "SUPERVISOR_URL": "{{ supervisor_url }}"
-  }
+  "hassio_api": true
 } 

@@ -8,8 +8,9 @@ interface ToolbarProps {
   folders?: { id: string; name: string }[];
   currentFolderId?: string;
   onChangeFolder?: (folderId: string) => void;
-  currentScriptName?: string | null;
-  onRenameScript?: (newName: string) => void;
+  currentAutomationName?: string | null;
+  currentAutomationStatus?: 'on' | 'off' | undefined;
+  onRenameAutomation?: (newName: string) => void;
   onSave?: () => void;
 }
 
@@ -20,35 +21,36 @@ const Toolbar: React.FC<ToolbarProps> = ({
   folders = [], 
   currentFolderId, 
   onChangeFolder, 
-  currentScriptName,
-  onRenameScript,
+  currentAutomationName,
+  currentAutomationStatus,
+  onRenameAutomation,
   onSave
 }) => {
-  const [scriptNameInput, setScriptNameInput] = useState<string>('');
-  const [isEditingScriptName, setIsEditingScriptName] = useState<boolean>(false);
+  const [automationNameInput, setAutomationNameInput] = useState<string>('');
+  const [isEditingAutomationName, setIsEditingAutomationName] = useState<boolean>(false);
 
-  // Aktualisiere das Eingabefeld, wenn sich der Scriptname ändert
+  // Aktualisiere das Eingabefeld, wenn sich der Automatisierungsname ändert
   useEffect(() => {
-    setScriptNameInput(currentScriptName || '');
-  }, [currentScriptName]);
+    setAutomationNameInput(currentAutomationName || '');
+  }, [currentAutomationName]);
 
-  const handleScriptNameSave = () => {
-    if (onRenameScript && scriptNameInput.trim()) {
-      onRenameScript(scriptNameInput.trim());
-      setIsEditingScriptName(false);
+  const handleAutomationNameSave = () => {
+    if (onRenameAutomation && automationNameInput.trim()) {
+      onRenameAutomation(automationNameInput.trim());
+      setIsEditingAutomationName(false);
     }
   };
 
-  const handleScriptNameCancel = () => {
-    setScriptNameInput(currentScriptName || '');
-    setIsEditingScriptName(false);
+  const handleAutomationNameCancel = () => {
+    setAutomationNameInput(currentAutomationName || '');
+    setIsEditingAutomationName(false);
   };
 
-  const handleScriptNameKeyDown = (e: React.KeyboardEvent) => {
+  const handleAutomationNameKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
-      handleScriptNameSave();
+      handleAutomationNameSave();
     } else if (e.key === 'Escape') {
-      handleScriptNameCancel();
+      handleAutomationNameCancel();
     }
   };
 
@@ -71,16 +73,16 @@ const Toolbar: React.FC<ToolbarProps> = ({
               ))}
             </select>
           </label>
-          {currentScriptName && (
+          {currentAutomationName && (
             <div style={{ marginLeft: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
-              {isEditingScriptName ? (
+              {isEditingAutomationName ? (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                   <input
                     type="text"
-                    value={scriptNameInput}
-                    onChange={e => setScriptNameInput(e.target.value)}
-                    onKeyDown={handleScriptNameKeyDown}
-                    onBlur={handleScriptNameSave}
+                    value={automationNameInput}
+                    onChange={e => setAutomationNameInput(e.target.value)}
+                    onKeyDown={handleAutomationNameKeyDown}
+                    onBlur={handleAutomationNameSave}
                     style={{
                       fontSize: 14,
                       fontFamily: 'monospace',
@@ -94,7 +96,7 @@ const Toolbar: React.FC<ToolbarProps> = ({
                     autoFocus
                   />
                   <button
-                    onClick={handleScriptNameSave}
+                    onClick={handleAutomationNameSave}
                     style={{
                       background: '#4CAF50',
                       color: '#fff',
@@ -109,7 +111,7 @@ const Toolbar: React.FC<ToolbarProps> = ({
                     ✓
                   </button>
                   <button
-                    onClick={handleScriptNameCancel}
+                    onClick={handleAutomationNameCancel}
                     style={{
                       background: '#f44336',
                       color: '#fff',
@@ -126,9 +128,22 @@ const Toolbar: React.FC<ToolbarProps> = ({
                 </div>
               ) : (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                  <span style={{ fontWeight: 500, minWidth: 120 }}>{currentScriptName}</span>
+                  <span style={{ fontWeight: 500, minWidth: 120 }}>{currentAutomationName}</span>
+                  {currentAutomationStatus && (
+                    <span style={{ 
+                      fontSize: 11, 
+                      color: currentAutomationStatus === 'on' ? '#4ecdc4' : '#f39c12',
+                      fontWeight: 'bold',
+                      padding: '2px 6px',
+                      borderRadius: 3,
+                      background: currentAutomationStatus === 'on' ? 'rgba(78, 205, 196, 0.1)' : 'rgba(243, 156, 18, 0.1)',
+                      border: `1px solid ${currentAutomationStatus === 'on' ? '#4ecdc4' : '#f39c12'}`
+                    }}>
+                      {currentAutomationStatus === 'on' ? '▶️ Läuft' : '⏸️ Gestoppt'}
+                    </span>
+                  )}
                   <button
-                    onClick={() => setIsEditingScriptName(true)}
+                    onClick={() => setIsEditingAutomationName(true)}
                     style={{
                       background: 'none',
                       border: 'none',

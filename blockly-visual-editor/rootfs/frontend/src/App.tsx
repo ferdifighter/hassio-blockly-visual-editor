@@ -12,7 +12,7 @@ import Sidebar from './components/Sidebar/Sidebar';
 const App: React.FC = () => {
   const [closedPanels, setClosedPanels] = useState<string[]>(['outline', 'problems']);
   const [theme, setTheme] = useState<'light' | 'dark' | 'auto'>('auto');
-  const [selectedScriptId, setSelectedScriptId] = useState<string | null>(null);
+  const [selectedAutomationId, setSelectedAutomationId] = useState<string | null>(null);
   const blocklyEditorRef = useRef<any>(null);
 
   // Theme wird standardmäßig auf 'auto' gesetzt
@@ -22,15 +22,17 @@ const App: React.FC = () => {
   const [toolbarData, setToolbarData] = useState<{
     folders: { id: string; name: string }[];
     currentFolderId: string | null;
-    currentScriptName: string | null;
-    currentScriptId: string | null;
-    moveScriptToFolder: (folderId: string) => void;
+    currentAutomationName: string | null;
+    currentAutomationId: string | null;
+    currentAutomationStatus: 'on' | 'off' | undefined;
+    moveAutomationToFolder: (folderId: string) => void;
   }>({ 
     folders: [], 
     currentFolderId: null, 
-    currentScriptName: null, 
-    currentScriptId: null,
-    moveScriptToFolder: () => {}
+    currentAutomationName: null, 
+    currentAutomationId: null,
+    currentAutomationStatus: undefined,
+    moveAutomationToFolder: () => {}
   });
 
   const getClosablePanels = (config: DockingLayoutConfig): { id: string; title: string }[] => {
@@ -71,12 +73,13 @@ const App: React.FC = () => {
                   setToolbarData({
                     folders: data.folders,
                     currentFolderId: data.currentFolderId,
-                    currentScriptName: data.currentScriptName,
-                    currentScriptId: data.currentScriptId,
-                    moveScriptToFolder: data.moveScriptToFolder
+                    currentAutomationName: data.currentAutomationName,
+                    currentAutomationId: data.currentAutomationId,
+                    currentAutomationStatus: data.currentAutomationStatus,
+                    moveAutomationToFolder: data.moveAutomationToFolder
                   });
-                  // Script-Auswahl übernehmen
-                  setSelectedScriptId(data.currentScriptId);
+                  // Automatisierungs-Auswahl übernehmen
+                  setSelectedAutomationId(data.currentAutomationId);
                 }}
               />
             ),
@@ -104,7 +107,7 @@ const App: React.FC = () => {
             hideHeader: true,
             contentPadding: 0,
             content: (
-              <BlocklyEditor theme={theme} scriptId={selectedScriptId} />
+              <BlocklyEditor theme={theme} automationId={selectedAutomationId} />
             ),
           },
           {
@@ -190,14 +193,15 @@ const App: React.FC = () => {
       setClosedPanels={setClosedPanels}
       folders={toolbarData.folders}
       currentFolderId={toolbarData.currentFolderId || ''}
-      onChangeFolder={toolbarData.moveScriptToFolder}
-      currentScriptName={toolbarData.currentScriptName}
+      onChangeFolder={toolbarData.moveAutomationToFolder}
+      currentAutomationName={toolbarData.currentAutomationName}
+      currentAutomationStatus={toolbarData.currentAutomationStatus}
       onSave={() => blocklyEditorRef.current?.handleSave()}
     />
   );
 
   layoutConfig.columns[1].panels[1].content = (
-    <BlocklyEditor ref={blocklyEditorRef} theme={theme} scriptId={selectedScriptId} />
+    <BlocklyEditor ref={blocklyEditorRef} theme={theme} automationId={selectedAutomationId} />
   );
 
   const handleLayoutChange = (newConfig: DockingLayoutConfig) => {

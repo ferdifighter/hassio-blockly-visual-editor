@@ -20,14 +20,27 @@ const FaFolderOpenIcon = FaFolderOpen as React.ComponentType<any>;
 const FaFolderClosedIcon = FaFolderClosed as React.ComponentType<any>;
 
 const getApiUrl = (endpoint: string) => {
-  if (
-    window.location.hostname === 'localhost' ||
-    window.location.hostname === '127.0.0.1'
-  ) {
-    return `http://localhost:8099/${endpoint.replace(/^\//, '')}`;
+  console.log('Sidebar getApiUrl Debug:', {
+    hostname: window.location.hostname,
+    protocol: window.location.protocol,
+    host: window.location.host,
+    pathname: window.location.pathname,
+    endpoint
+  });
+  
+  // Für lokale Entwicklung (localhost)
+  if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+    const url = `http://localhost:8099/${endpoint.replace(/^\//, '')}`;
+    console.log('Lokale Entwicklung - URL:', url);
+    return url;
   }
+  
+  // Für Home Assistant Ingress
+  // Der Ingress-Pfad ist bereits im pathname enthalten, also verwende den gleichen Host
   const base = window.location.pathname.endsWith('/') ? window.location.pathname : window.location.pathname + '/';
-  return `${base}${endpoint.replace(/^\//, '')}`;
+  const url = `${window.location.protocol}//${window.location.host}${base}${endpoint.replace(/^\//, '')}`;
+  console.log('Home Assistant Ingress - URL:', url);
+  return url;
 };
 
 function updateNameInTree(tree: any, id: string, newName: string): any {
@@ -159,9 +172,10 @@ interface SidebarProps {
   onSelectionChange?: (data: {
     folders: { id: string; name: string }[];
     currentFolderId: string | null;
-    currentScriptName: string | null;
-    currentScriptId: string | null;
-    moveScriptToFolder: (folderId: string) => void;
+    currentAutomationName: string | null;
+    currentAutomationId: string | null;
+    currentAutomationStatus: 'on' | 'off' | undefined;
+    moveAutomationToFolder: (folderId: string) => void;
   }) => void;
 }
 
@@ -169,7 +183,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onSelectionChange }) => {
   const [treeObj, setTreeObj] = useState<any>(null);
   // Status-Map: { [id]: 'on' | 'off' }
   const [automationStatus, setAutomationStatus] = useState<{ [id: string]: 'on' | 'off' | undefined }>({});
-  const [runningScriptId, setRunningScriptId] = useState<string | null>(null);
+  const [runningAutomationId, setRunningAutomationId] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingValue, setEditingValue] = useState<string>('');
   const [expandedIds, setExpandedIds] = useState<(string | number)[]>([]);
@@ -282,7 +296,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onSelectionChange }) => {
       });
   }, []);
 
-  // Status für alle Skripte abfragen
+  // Status für alle Automatisierungen abfragen
   const fetchAutomationStatus = useCallback((ids: string[]) => {
     ids.forEach(id => {
       fetch(getApiUrl(`api/automations/${id}/status`))
@@ -296,14 +310,14 @@ const Sidebar: React.FC<SidebarProps> = ({ onSelectionChange }) => {
     });
   }, []);
 
-  // IDs aller Skripte extrahieren
-  const getAllScriptIds = (tree: any): string[] => {
+  // IDs aller Automatisierungen extrahieren
+  const getAllAutomationIds = (tree: any): string[] => {
     if (!tree) return [];
     let ids: string[] = [];
-    if (tree.type === 'script' && tree.id) ids.push(tree.id);
+    if (tree.type === 'automation' && tree.id) ids.push(tree.id);
     if (tree.children) {
       tree.children.forEach((child: any) => {
-        ids = ids.concat(getAllScriptIds(child));
+        ids = ids.concat(getAllAutomationIds(child));
       });
     }
     return ids;
@@ -312,17 +326,17 @@ const Sidebar: React.FC<SidebarProps> = ({ onSelectionChange }) => {
   // Status beim Laden der Tree-Daten abfragen
   useEffect(() => {
     if (!treeObj) return;
-    const ids = getAllScriptIds(treeObj);
+    const ids = getAllAutomationIds(treeObj);
     if (ids.length > 0) fetchAutomationStatus(ids);
   }, [treeObj, fetchAutomationStatus]);
 
-  // Optional: Polling für Status (z.B. alle 5 Sekunden)
+  // Optional: Polling für Status (z.B. alle 10 Sekunden)
   useEffect(() => {
     const interval = setInterval(() => {
       if (!treeObj) return;
-      const ids = getAllScriptIds(treeObj);
+      const ids = getAllAutomationIds(treeObj);
       if (ids.length > 0) fetchAutomationStatus(ids);
-    }, 5000);
+    }, 10000);
     return () => clearInterval(interval);
   }, [treeObj, fetchAutomationStatus]);
 
@@ -364,6 +378,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onSelectionChange }) => {
   const onPlayPause = (element: any, e: React.MouseEvent) => {
     e.stopPropagation();
     const id = element.id;
+    
     const isRunning = automationStatus[id] === 'on';
     const endpoint = isRunning ? `api/automations/${id}/stop` : `api/automations/${id}/start`;
     fetch(getApiUrl(endpoint), { method: 'POST' })
@@ -389,9 +404,9 @@ const Sidebar: React.FC<SidebarProps> = ({ onSelectionChange }) => {
   // Hilfsfunktion: neue eindeutige ID generieren
   const generateId = () => 'folder_' + Math.random().toString(36).substr(2, 9);
 
-  // Hilfsfunktion: Eindeutigen Standardnamen für Script generieren
-  const getDefaultScriptName = () => {
-    const base = 'Neues Script';
+  // Hilfsfunktion: Eindeutigen Standardnamen für Automatisierung generieren
+  const getDefaultAutomationName = () => {
+    const base = 'Neue Automatisierung';
     const children = treeObj?.children || [];
     const names = new Set(
       children
@@ -405,18 +420,18 @@ const Sidebar: React.FC<SidebarProps> = ({ onSelectionChange }) => {
     return `${base} (${i})`;
   };
 
-  // Neues Script anlegen
-  const handleNewScript = () => {
+  // Neue Automatisierung anlegen
+  const handleNewAutomation = () => {
     if (!treeObj) return;
-    const newId = 'script_' + Math.random().toString(36).substr(2, 9);
-    const defaultName = getDefaultScriptName();
-    const newScript = { name: defaultName, type: 'script', id: newId };
+    const newId = 'automation_' + Math.random().toString(36).substr(2, 9);
+    const defaultName = getDefaultAutomationName();
+    const newAutomation = { name: defaultName, type: 'automation', id: newId };
     let updatedTree;
     
     if (selectedId) {
       const addToFolder = (node: any): any => {
         if (node.id === selectedId && node.type === 'folder') {
-          return { ...node, children: [...(node.children || []), newScript] };
+          return { ...node, children: [...(node.children || []), newAutomation] };
         }
         if (node.children) {
           return { ...node, children: node.children.map(addToFolder) };
@@ -433,7 +448,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onSelectionChange }) => {
     } else {
       updatedTree = {
         ...treeObj,
-        children: [...(treeObj.children || []), newScript]
+        children: [...(treeObj.children || []), newAutomation]
       };
     }
     
@@ -692,12 +707,12 @@ const Sidebar: React.FC<SidebarProps> = ({ onSelectionChange }) => {
 
   // Toolbar-Integration
   const folders = treeData.filter((n: any) => n.type === 'folder').map((n: any) => ({ id: n.id, name: n.name }));
-  const selectedScript = treeData.find((n: any) => n.id === selectedId && n.type !== 'folder');
-  const currentFolderId = selectedScript ? selectedScript.parent : null;
-  const currentScriptName = selectedScript ? selectedScript.name : null;
-  
-  const moveScriptToFolder = useCallback((folderId: string) => {
-    if (!selectedScript || !folderId || !treeObj) return;
+      const selectedAutomation = treeData.find((n: any) => n.id === selectedId && n.type !== 'folder');
+    const currentFolderId = selectedAutomation ? selectedAutomation.parent : null;
+    const currentAutomationName = selectedAutomation ? selectedAutomation.name : null;
+
+    const moveAutomationToFolder = useCallback((folderId: string) => {
+      if (!selectedAutomation || !folderId || !treeObj) return;
     
     const removeNode = (node: any, removeId: string): [any, any | null] => {
       if (!node.children) return [node, null];
@@ -727,8 +742,8 @@ const Sidebar: React.FC<SidebarProps> = ({ onSelectionChange }) => {
       return node;
     };
     
-    const [treeWithout, movedNode] = removeNode(treeObj, selectedScript.id);
-    if (!movedNode) return;
+          const [treeWithout, movedNode] = removeNode(treeObj, selectedAutomation.id);
+      if (!movedNode) return;
     const newTree = addNode(treeWithout, folderId, movedNode);
     
     setTreeObj(newTree);
@@ -741,7 +756,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onSelectionChange }) => {
     }).catch(error => {
       console.error('Fehler beim Drag & Drop:', error);
     });
-  }, [selectedScript, treeObj]);
+        }, [selectedAutomation, treeObj]);
 
   // Callback für Toolbar
   useEffect(() => {
@@ -749,12 +764,13 @@ const Sidebar: React.FC<SidebarProps> = ({ onSelectionChange }) => {
       onSelectionChange({
         folders,
         currentFolderId,
-        currentScriptName,
-        currentScriptId: selectedId,
-        moveScriptToFolder,
+        currentAutomationName,
+        currentAutomationId: selectedId,
+        currentAutomationStatus: selectedId ? automationStatus[selectedId] : undefined,
+        moveAutomationToFolder,
       });
     }
-  }, [folders, currentFolderId, currentScriptName, selectedId, moveScriptToFolder, onSelectionChange]);
+  }, [folders, currentFolderId, currentAutomationName, selectedId, automationStatus, moveAutomationToFolder, onSelectionChange]);
 
   return (
     <DndProvider backend={HTML5Backend}>
@@ -770,7 +786,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onSelectionChange }) => {
       }}>
         <div className="sidebar-toolbar" style={{ display: 'flex', gap: 8, padding: 12, borderBottom: '1px solid #333' }}>
           <button title="Neuer Ordner" style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer' }} onClick={handleNewFolder}><FaFolderPlusIcon /></button>
-          <button title="Neues Script" style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer' }} onClick={handleNewScript}><FaFileIcon /></button>
+                          <button title="Neue Automatisierung" style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer' }} onClick={handleNewAutomation}><FaFileIcon /></button>
           <button title="Nach oben" style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer' }}><FaArrowUpIcon /></button>
           <button title="Nach unten" style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer' }}><FaArrowDownIcon /></button>
           <button
@@ -974,7 +990,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onSelectionChange }) => {
                           {automationStatus[element.id] === 'on' ? <FaPauseIcon size={14} /> : <FaPlayIcon size={14} />}
                         </button>
                         {!automationStatus[element.id] && (
-                          <span style={{ fontSize: 11, color: '#e74c3c', marginLeft: 2 }}>Nicht initialisiert</span>
+                          <span style={{ fontSize: 11, color: '#e74c3c', marginLeft: 2 }}>Nicht geladen</span>
                         )}
                         <button
                           title="Umbenennen"
@@ -999,7 +1015,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onSelectionChange }) => {
             />
           ) : (
             <div style={{ color: '#888', textAlign: 'center', padding: '20px' }}>
-              {filterText.trim() ? 'Keine Ergebnisse gefunden.' : 'Keine Scripts gefunden oder Daten ungültig.'}
+              {filterText.trim() ? 'Keine Ergebnisse gefunden.' : 'Keine Automatisierungen gefunden oder Daten ungültig.'}
             </div>
           )}
           {/* Modal für Lösch-Bestätigung */}

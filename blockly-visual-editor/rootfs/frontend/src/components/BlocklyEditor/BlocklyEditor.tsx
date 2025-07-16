@@ -21,27 +21,27 @@ const LightTheme = Blockly.Theme.defineTheme('light', {
 
 interface BlocklyEditorProps {
   theme: 'light' | 'dark' | 'auto';
-  scriptId?: string | null;
+  automationId?: string | null;
   onSave?: () => Promise<void>;
   onCancel?: () => void;
 }
 
-const BlocklyEditor = forwardRef<any, BlocklyEditorProps>(({ theme, scriptId, onSave, onCancel }, ref) => {
+const BlocklyEditor = forwardRef<any, BlocklyEditorProps>(({ theme, automationId, onSave, onCancel }, ref) => {
   const blocklyDiv = useRef<HTMLDivElement>(null);
   const workspaceRef = useRef<Blockly.WorkspaceSvg | null>(null);
   const [toolboxXml, setToolboxXml] = useState<string | null>(null);
   const [automation, setAutomation] = useState<any>(null);
   const [loading, setLoading] = useState(false);
-  const [scriptName, setScriptName] = useState<string>('');
+  const [automationName, setAutomationName] = useState<string>('');
 
-  // Scriptnamen aus der Automatisierung oder aus dem Workspace holen
+  // Automatisierungsnamen aus der Automatisierung oder aus dem Workspace holen
   useEffect(() => {
     if (automation && automation.alias) {
-      setScriptName(automation.alias);
-    } else if (scriptId) {
-      setScriptName(scriptId);
+      setAutomationName(automation.alias);
+    } else if (automationId) {
+      setAutomationName(automationId);
     }
-  }, [automation, scriptId]);
+  }, [automation, automationId]);
 
   // Sprache und Toolbox dynamisch bestimmen
   useEffect(() => {
@@ -83,24 +83,24 @@ const BlocklyEditor = forwardRef<any, BlocklyEditorProps>(({ theme, scriptId, on
     loadToolboxXml();
   }, []);
 
-  // Script laden, wenn scriptId sich ändert
+  // Automatisierung laden, wenn automationId sich ändert
   useEffect(() => {
-    if (!scriptId) return;
+    if (!automationId) return;
     setLoading(true);
     
-    const apiUrl = getApiUrl(`api/scripts/${scriptId}`);
-    console.log('Lade Script:', scriptId, 'von URL:', apiUrl);
+    const apiUrl = getApiUrl(`api/scripts/${automationId}`);
+    console.log('Lade Automatisierung:', automationId, 'von URL:', apiUrl);
     
-    // Zuerst Script-Info aus scripts.json laden
+    // Zuerst Automatisierungs-Info aus scripts.json laden
     fetch(apiUrl)
       .then(res => {
         console.log('API Response Status:', res.status, res.statusText);
         if (!res.ok) {
-          // Script existiert noch nicht - das ist normal bei neuen Scripts
-          console.log('Script existiert noch nicht, erstelle neue Automatisierung');
+          // Automatisierung existiert noch nicht - das ist normal bei neuen Automatisierungen
+          console.log('Automatisierung existiert noch nicht, erstelle neue Automatisierung');
           const newAutomation = {
-            id: scriptId,
-            alias: scriptId, // Wird später durch den Namen ersetzt
+            id: automationId,
+            alias: automationId, // Wird später durch den Namen ersetzt
             description: '',
             trigger: [],
             condition: [],
@@ -116,10 +116,10 @@ const BlocklyEditor = forwardRef<any, BlocklyEditorProps>(({ theme, scriptId, on
         return res.json();
       })
       .then(scriptData => {
-        if (!scriptData) return; // Script war neu, bereits behandelt
+        if (!scriptData) return; // Automatisierung war neu, bereits behandelt
         
         // Dann versuchen, die Automatisierung aus automations.yaml zu laden
-        const automationUrl = getApiUrl(`api/automations/${scriptId}`);
+        const automationUrl = getApiUrl(`api/automations/${automationId}`);
         console.log('Lade Automatisierung von URL:', automationUrl);
         
         return fetch(automationUrl)
@@ -127,10 +127,10 @@ const BlocklyEditor = forwardRef<any, BlocklyEditorProps>(({ theme, scriptId, on
             console.log('Automatisierung API Response Status:', res.status, res.statusText);
             if (!res.ok) {
               // Keine Automatisierung vorhanden - erstelle eine neue
-              console.log('Erstelle neue Automatisierung für Script:', scriptId);
+              console.log('Erstelle neue Automatisierung für:', automationId);
               const newAutomation = {
-                id: scriptId,
-                alias: scriptData.name || scriptId,
+                id: automationId,
+                alias: scriptData.name || automationId,
                 description: '',
                 trigger: [],
                 condition: [],
@@ -164,11 +164,11 @@ const BlocklyEditor = forwardRef<any, BlocklyEditorProps>(({ theme, scriptId, on
           });
       })
       .catch((error) => {
-        console.warn('Fehler beim Laden des Scripts:', error);
+        console.warn('Fehler beim Laden der Automatisierung:', error);
         // Erstelle eine neue Automatisierung bei Fehlern
         const newAutomation = {
-          id: scriptId,
-          alias: scriptId,
+          id: automationId,
+          alias: automationId,
           description: '',
           trigger: [],
           condition: [],
@@ -181,7 +181,7 @@ const BlocklyEditor = forwardRef<any, BlocklyEditorProps>(({ theme, scriptId, on
         }
       })
       .finally(() => setLoading(false));
-  }, [scriptId]);
+  }, [automationId]);
 
   // Hilfsfunktion: entity_id aus Alias generieren (Slugify wie im Backend)
   function slugify(str: string) {
@@ -199,12 +199,12 @@ const BlocklyEditor = forwardRef<any, BlocklyEditorProps>(({ theme, scriptId, on
   const [aliasWarning, setAliasWarning] = useState<string | null>(null);
   const [entityIdPreview, setEntityIdPreview] = useState<string>('');
 
-  // Synchronisiere Alias mit Scriptnamen
+  // Synchronisiere Alias mit Automatisierungsnamen
   useEffect(() => {
-    if (automation && automation.alias !== scriptName) {
-      setAutomation((prev: any) => prev ? { ...prev, alias: scriptName } : prev);
+    if (automation && automation.alias !== automationName) {
+      setAutomation((prev: any) => prev ? { ...prev, alias: automationName } : prev);
     }
-  }, [scriptName]);
+  }, [automationName]);
 
   // Alias-Validierung und Vorschau
   useEffect(() => {
@@ -228,12 +228,12 @@ const BlocklyEditor = forwardRef<any, BlocklyEditorProps>(({ theme, scriptId, on
     const xmlDom = Blockly.Xml.workspaceToDom(workspaceRef.current!);
     const xmlText = domToText(xmlDom);
     console.log('handleSave aufgerufen', {
-      scriptId,
+      automationId,
       automation,
       xmlText
     });
-    if (!scriptId || !workspaceRef.current) return;
-    const alias = scriptName.trim();
+    if (!automationId || !workspaceRef.current) return;
+    const alias = automationName.trim();
     const slug = slugify(alias);
     if (!alias || !slug) {
       setAliasWarning('Alias darf nicht leer sein und muss mindestens einen Buchstaben oder eine Zahl enthalten.');
@@ -243,15 +243,15 @@ const BlocklyEditor = forwardRef<any, BlocklyEditorProps>(({ theme, scriptId, on
       alert('Achtung: Wenn du den Namen änderst, ändert sich auch die entity_id! (entity_id: ' + `automation.${slug}` + ')');
     }
     const newAutomation = {
-      ...(automation || { id: scriptId }),
-      id: scriptId,
+      ...(automation || { id: automationId }),
+      id: automationId,
       alias: alias,
       xml: xmlText,
     };
     setLoading(true);
     
     // Speichere die Automatisierung in automations.yaml
-    await fetch(getApiUrl(`api/automations/${scriptId}`),
+    await fetch(getApiUrl(`api/automations/${automationId}`),
       {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
@@ -333,7 +333,7 @@ const BlocklyEditor = forwardRef<any, BlocklyEditorProps>(({ theme, scriptId, on
     }, 0);
     // Cleanup handled by next effect run
     // eslint-disable-next-line
-  }, [theme, toolboxXml, scriptId]);
+  }, [theme, toolboxXml, automationId]);
 
   // ResizeObserver für dynamische Anpassung
   useEffect(() => {
@@ -345,19 +345,19 @@ const BlocklyEditor = forwardRef<any, BlocklyEditorProps>(({ theme, scriptId, on
     return () => observer.disconnect();
   }, []);
 
-  // Leere den Workspace, wenn kein Script ausgewählt ist
+  // Leere den Workspace, wenn keine Automatisierung ausgewählt ist
   useEffect(() => {
-    if (scriptId === null && workspaceRef.current) {
+    if (automationId === null && workspaceRef.current) {
       workspaceRef.current.clear();
     }
-  }, [scriptId]);
+  }, [automationId]);
 
   useImperativeHandle(ref, () => ({
     handleSave
   }));
 
-  if (!scriptId) {
-    return <div style={{ color: '#888', textAlign: 'center', padding: 32 }}>Kein Script ausgewählt</div>;
+  if (!automationId) {
+    return <div style={{ color: '#888', textAlign: 'center', padding: 32 }}>Keine Automatisierung ausgewählt</div>;
   }
 
   if (!toolboxXml) {
@@ -367,12 +367,6 @@ const BlocklyEditor = forwardRef<any, BlocklyEditorProps>(({ theme, scriptId, on
   return (
     <section style={{ display: 'flex', flex: 1, width: '100%', height: '100%' }}>
       <div ref={blocklyDiv} id="blocklyDiv" style={{ height: '100%', width: '100%' }} />
-      {entityIdPreview && (
-        <span style={{ fontSize: 11, color: '#aaa', marginTop: 2 }}>entity_id: {entityIdPreview}</span>
-      )}
-      {aliasWarning && (
-        <span style={{ fontSize: 11, color: '#e74c3c', marginTop: 2 }}>{aliasWarning}</span>
-      )}
     </section>
   );
 });
