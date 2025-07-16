@@ -13,6 +13,33 @@ class EntityField extends Blockly.FieldTextInput {
     this.showEntitySelector_();
   }
 
+  // Serialisierung überschreiben
+  toXml(fieldElement: Element) {
+    fieldElement.textContent = this.value_;
+    return fieldElement;
+  }
+
+  // Deserialisierung überschreiben
+  fromXml(fieldElement: Element) {
+    this.setValue(fieldElement.textContent || '');
+  }
+
+  // Wert setzen mit Event-Fire
+  setValue(newValue: string) {
+    if (newValue === this.value_) {
+      return;
+    }
+    
+    if (this.sourceBlock_ && Blockly.Events.isEnabled()) {
+      Blockly.Events.fire(new Blockly.Events.BlockChange(
+        this.sourceBlock_, 'field', this.name, this.value_, newValue
+      ));
+    }
+    
+    // Parent-Methode aufrufen für korrekte Aktualisierung
+    super.setValue(newValue);
+  }
+
   // Entity-Selector anzeigen
   showEntitySelector_() {
     // Einfaches Popup mit Entitäten-Liste
