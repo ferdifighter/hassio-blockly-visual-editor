@@ -1,4 +1,5 @@
 import * as Blockly from 'blockly';
+import { EntityField } from './EntityField';
 
 export function registerActionBlocks() {
   // Service-Aufruf
@@ -40,7 +41,7 @@ export function registerActionBlocks() {
     init: function() {
       this.appendDummyInput()
         .appendField('Benachrichtigung senden')
-        .appendField(new Blockly.FieldTextInput('mobile_app_iphone'), 'NOTIFY_SERVICE');
+        .appendField(new EntityField('mobile_app_iphone'), 'NOTIFY_SERVICE');
       this.appendDummyInput()
         .appendField('Nachricht')
         .appendField(new Blockly.FieldTextInput('Tür wurde geöffnet!'), 'MESSAGE');
@@ -50,7 +51,7 @@ export function registerActionBlocks() {
       this.setPreviousStatement(true, null);
       this.setNextStatement(true, null);
       this.setColour(160);
-      this.setTooltip('Aktion: Benachrichtigung senden.');
+      this.setTooltip('Aktion: Benachrichtigung senden. Klicke auf das Feld um eine Entität auszuwählen.');
       this.setHelpUrl('');
     }
   };

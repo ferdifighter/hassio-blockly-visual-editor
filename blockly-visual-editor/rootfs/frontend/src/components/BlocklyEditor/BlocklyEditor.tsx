@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState, useImperativeHandle, forwardRef } f
 import * as Blockly from 'blockly';
 import DarkTheme from '@blockly/theme-dark';
 import { registerAllHomeAssistantBlocks } from './blocks';
+import { EntityField } from './blocks/EntityField';
 registerAllHomeAssistantBlocks();
 
 // Zusätzlicher Import für textToDom und domToText

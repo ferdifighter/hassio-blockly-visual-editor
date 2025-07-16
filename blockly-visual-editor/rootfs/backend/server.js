@@ -863,6 +863,49 @@ app.get('/api/automations/:id/status', async (req, res) => {
   }
 });
 
+// Alle Entitäten abrufen
+app.get('/api/entities', async (req, res) => {
+  console.log('=== Alle Entitäten abrufen ===');
+  
+  const { HA_TOKEN, HA_URL } = getHACredentials();
+  
+  if (!HA_URL) {
+    console.error('Keine gültige Home Assistant URL gefunden');
+    return res.status(500).json({ 
+      error: 'Home Assistant URL nicht verfügbar',
+      available_vars: Object.keys(process.env).filter(key => key.includes('SUPERVISOR') || key.includes('HASSIO') || key.includes('HA_') || key.includes('hass_'))
+    });
+  }
+  
+  try {
+    console.log('Sende Entitäten-Request an:', `${HA_URL}/api/states`);
+    
+    const axiosConfig = { };
+    if (HA_TOKEN) axiosConfig.headers = { Authorization: `Bearer ${HA_TOKEN}` };
+    const result = await axios.get(
+      `${HA_URL}/api/states`,
+      axiosConfig
+    );
+    
+    // Entitäten nach Typ gruppieren und formatieren
+    const entities = result.data.map(entity => ({
+      entity_id: entity.entity_id,
+      state: entity.state,
+      friendly_name: entity.attributes?.friendly_name || entity.entity_id,
+      domain: entity.entity_id.split('.')[0],
+      device_class: entity.attributes?.device_class || null,
+      unit_of_measurement: entity.attributes?.unit_of_measurement || null
+    }));
+    
+    console.log(`Erfolgreich ${entities.length} Entitäten abgerufen`);
+    res.json(entities);
+  } catch (e) {
+    console.error('Fehler beim Abrufen der Entitäten:', e.response?.data || e.message);
+    console.error('Response Status:', e.response?.status);
+    res.status(500).json({ error: e.response?.data || e.message });
+  }
+});
+
 // 2. Toolbox-XMLs (direkt aus /config/www/toolbox)
 app.use('/toolbox', express.static('/config/www/toolbox'));
 

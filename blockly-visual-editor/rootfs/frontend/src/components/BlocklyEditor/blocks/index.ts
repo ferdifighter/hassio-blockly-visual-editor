@@ -7,6 +7,7 @@ import { registerNotificationBlocks } from './notifications';
 import { registerTimeBlocks } from './time';
 import { registerVariableBlocks } from './variables';
 import { registerLogicBlocks } from './logic';
+import { EntityField } from './EntityField';
 
 export function registerAllHomeAssistantBlocks() {
   registerTriggerBlocks();
