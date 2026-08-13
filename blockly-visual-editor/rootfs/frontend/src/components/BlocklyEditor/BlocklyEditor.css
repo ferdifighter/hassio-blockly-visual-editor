@@ -176,6 +176,103 @@
   padding: 20px;
 }
 
+.entity-selector-modal-compact {
+  width: min(92vw, 420px);
+  height: auto;
+  max-height: 80vh;
+}
+
+.field-picker-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.field-picker-form input[type='time'],
+.field-picker-form input[type='date'],
+.field-picker-form input[type='number'],
+.field-picker-form input[type='text'] {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 10px 12px;
+  background: #333;
+  border: 1px solid #555;
+  border-radius: 6px;
+  color: #fff;
+  font-size: 16px;
+}
+
+.field-picker-label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 13px;
+  color: #ccc;
+}
+
+.field-picker-duration {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+
+.field-picker-weekdays {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.field-picker-check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: #ddd;
+}
+
+.field-picker-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.field-picker-actions button,
+.field-picker-custom button {
+  background: #2a6fdb;
+  border: none;
+  color: #fff;
+  border-radius: 6px;
+  padding: 8px 12px;
+  cursor: pointer;
+}
+
+.field-picker-actions button:first-child:not(:only-child) {
+  background: #444;
+}
+
+.field-picker-custom {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.field-picker-custom input {
+  flex: 1;
+  box-sizing: border-box;
+  padding: 8px 12px;
+  background: #333;
+  border: 1px solid #555;
+  border-radius: 4px;
+  color: #fff;
+}
+
+.field-picker-current {
+  margin-left: 8px;
+  font-size: 11px;
+  color: #4ecdc4;
+}
+
 .yaml-preview {
   margin: 0;
   padding: 16px;

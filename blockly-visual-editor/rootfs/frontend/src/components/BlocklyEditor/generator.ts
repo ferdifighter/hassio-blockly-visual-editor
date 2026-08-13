@@ -14,6 +14,8 @@ export interface HomeAssistantAutomation {
 
 const TRIGGER_TYPES = new Set([
   'ha_time_trigger',
+  'ha_datetime_trigger',
+  'ha_calendar_trigger',
   'ha_state_trigger',
   'ha_numeric_state_trigger',
   'ha_event_trigger',
@@ -27,6 +29,7 @@ const CONDITION_TYPES = new Set([
   'ha_if_state',
   'ha_if_numeric_state',
   'ha_if_time',
+  'ha_if_date',
   'ha_if_sun',
   'ha_if_template',
   'ha_if_and',
@@ -112,6 +115,20 @@ export function blockToTrigger(block: Blockly.Block): JsonObject | null {
   switch (block.type) {
     case 'ha_time_trigger':
       return { trigger: 'time', at: field(block, 'TIME') || '00:00' };
+    case 'ha_datetime_trigger': {
+      const at = field(block, 'DATETIME');
+      return {
+        trigger: 'template',
+        value_template: `{{ now().strftime('%Y-%m-%d %H:%M') == '${at}' }}`,
+      };
+    }
+    case 'ha_calendar_trigger':
+      return omitEmpty({
+        trigger: 'calendar',
+        entity_id: field(block, 'ENTITY_ID'),
+        event: field(block, 'CALENDAR_EVENT') || 'start',
+        offset: optionalField(block, 'OFFSET'),
+      });
     case 'ha_state_trigger':
       return omitEmpty({
         trigger: 'state',
@@ -173,6 +190,13 @@ export function blockToCondition(block: Blockly.Block): JsonObject | null {
         before: optionalField(block, 'BEFORE'),
         weekday: splitCsv(optionalField(block, 'WEEKDAYS')),
       });
+    case 'ha_if_date': {
+      const date = field(block, 'DATE');
+      return {
+        condition: 'template',
+        value_template: `{{ now().date() | string == '${date}' }}`,
+      };
+    }
     case 'ha_if_sun':
       return {
         condition: 'state',
@@ -236,9 +260,12 @@ export function blockToAction(block: Blockly.Block): JsonObject | null {
       });
     }
     case 'ha_delay': {
-      const seconds = Number(block.getFieldValue('SECONDS') ?? 0);
       const delayTime = optionalField(block, 'DELAY_TIME');
-      return delayTime ? { delay: delayTime } : { delay: { seconds: Number.isFinite(seconds) ? seconds : 0 } };
+      if (delayTime) {
+        return { delay: delayTime };
+      }
+      const secondsRaw = block.getField('SECONDS') ? Number(block.getFieldValue('SECONDS') ?? 0) : 0;
+      return { delay: { seconds: Number.isFinite(secondsRaw) ? secondsRaw : 0 } };
     }
     case 'ha_wait_for_state':
       return omitEmpty({

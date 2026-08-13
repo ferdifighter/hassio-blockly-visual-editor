@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.3.4
+
+- Entitäten werden mit ihrem Anzeigenamen statt der Entity-ID dargestellt
+- Auswahldialoge für Entitäten, Services, Zustände und Ereignisse
+- Uhrzeit-, Datums- und Dauerfelder statt freier Texteingabe
+- Wochentage können per Auswahl gesetzt werden
+
 ## 0.3.3
 
 - Neue Automatisierungen werden sofort ausgewählt, damit Speichern aktiv ist

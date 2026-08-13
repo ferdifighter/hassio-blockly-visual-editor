@@ -688,7 +688,12 @@ app.get('/api/entities', async (req, res) => {
       friendly_name: entity.attributes?.friendly_name || entity.entity_id,
       domain: entity.entity_id.split('.')[0],
       device_class: entity.attributes?.device_class || null,
-      unit_of_measurement: entity.attributes?.unit_of_measurement || null
+      unit_of_measurement: entity.attributes?.unit_of_measurement || null,
+      options: Array.isArray(entity.attributes?.options)
+        ? entity.attributes.options
+        : Array.isArray(entity.attributes?.hvac_modes)
+          ? entity.attributes.hvac_modes
+          : null
     }));
     
     console.log(`Erfolgreich ${entities.length} Entitäten abgerufen`);
@@ -779,6 +784,43 @@ app.get('/api/notify-targets', async (req, res) => {
     res.json(targets);
   } catch (e) {
     console.error('Fehler beim Abrufen der Companion-Geräte:', e.response?.data || e.message);
+    res.status(500).json({ error: e.response?.data || e.message });
+  }
+});
+
+app.get('/api/services', async (req, res) => {
+  const { HA_TOKEN, HA_URL } = getHACredentials();
+  if (!HA_URL) {
+    return res.status(500).json({ error: 'Home Assistant URL nicht verfügbar' });
+  }
+
+  try {
+    const axiosConfig = {};
+    if (HA_TOKEN) axiosConfig.headers = { Authorization: `Bearer ${HA_TOKEN}` };
+    const result = await axios.get(`${HA_URL}/api/services`, axiosConfig);
+    const domains = Array.isArray(result.data) ? result.data : [];
+    const services = [];
+
+    for (const entry of domains) {
+      const domain = entry?.domain;
+      const domainServices = entry?.services || {};
+      if (!domain || typeof domainServices !== 'object') {
+        continue;
+      }
+      for (const [name, meta] of Object.entries(domainServices)) {
+        services.push({
+          service: `${domain}.${name}`,
+          domain,
+          name: (meta && meta.name) || name.replace(/_/g, ' '),
+          description: (meta && meta.description) || ''
+        });
+      }
+    }
+
+    services.sort((a, b) => a.service.localeCompare(b.service, 'de'));
+    res.json(services);
+  } catch (e) {
+    console.error('Fehler beim Abrufen der Services:', e.response?.data || e.message);
     res.status(500).json({ error: e.response?.data || e.message });
   }
 });

@@ -13,6 +13,8 @@ export const HA_TOOLBOX = {
       colour: '#FF6680',
       contents: [
         { kind: 'block', type: 'ha_time_trigger' },
+        { kind: 'block', type: 'ha_datetime_trigger' },
+        { kind: 'block', type: 'ha_calendar_trigger' },
         { kind: 'block', type: 'ha_state_trigger' },
         { kind: 'block', type: 'ha_numeric_state_trigger' },
         { kind: 'block', type: 'ha_event_trigger' },
@@ -30,6 +32,7 @@ export const HA_TOOLBOX = {
         { kind: 'block', type: 'ha_if_state' },
         { kind: 'block', type: 'ha_if_numeric_state' },
         { kind: 'block', type: 'ha_if_time' },
+        { kind: 'block', type: 'ha_if_date' },
         { kind: 'block', type: 'ha_if_sun' },
         { kind: 'block', type: 'ha_if_template' },
       ],

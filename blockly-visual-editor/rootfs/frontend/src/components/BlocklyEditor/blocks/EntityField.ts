@@ -1,5 +1,7 @@
 import * as Blockly from 'blockly';
 import { getApiUrl } from '../../../api';
+import { escapeHtml } from './fieldUtils';
+import { openSelectorModal, renderSearchableTable } from './selectorModal';
 
 export interface HaEntity {
   entity_id: string;
@@ -8,12 +10,13 @@ export interface HaEntity {
   domain: string;
   device_class?: string | null;
   unit_of_measurement?: string | null;
+  options?: string[] | null;
 }
 
 let entityCache: { at: number; entities: HaEntity[] } | null = null;
 const CACHE_MS = 30_000;
 
-async function loadEntities(): Promise<HaEntity[]> {
+export async function loadEntities(): Promise<HaEntity[]> {
   if (entityCache && Date.now() - entityCache.at < CACHE_MS) {
     return entityCache.entities;
   }
@@ -24,6 +27,21 @@ async function loadEntities(): Promise<HaEntity[]> {
   const entities = (await res.json()) as HaEntity[];
   entityCache = { at: Date.now(), entities };
   return entities;
+}
+
+export function getCachedEntities(): HaEntity[] {
+  return entityCache?.entities ?? [];
+}
+
+export function labelForEntity(entityId: string): string {
+  if (!entityId) {
+    return 'Entität wählen';
+  }
+  const cached = entityCache?.entities.find((entity) => entity.entity_id === entityId);
+  if (cached?.friendly_name) {
+    return cached.friendly_name;
+  }
+  return entityId;
 }
 
 export class EntityField extends Blockly.FieldTextInput {
@@ -46,131 +64,68 @@ export class EntityField extends Blockly.FieldTextInput {
     this.domainFilter = domain;
   }
 
-  protected override showEditor_(_e?: Event, _quietInput?: boolean): void {
-    this.showEntitySelector();
+  override getText(): string {
+    const value = this.getValue() || '';
+    if (!value) {
+      return this.placeholderLabel();
+    }
+    return labelForEntity(value);
   }
 
-  private showEntitySelector(): void {
-    const overlay = document.createElement('div');
-    overlay.className = 'entity-selector-overlay';
-    overlay.addEventListener('click', (event) => {
-      if (event.target === overlay) {
-        overlay.remove();
-      }
+  private placeholderLabel(): string {
+    switch (this.domainFilter) {
+      case 'light':
+        return 'Licht wählen';
+      case 'switch':
+        return 'Schalter wählen';
+      case 'scene':
+        return 'Szene wählen';
+      case 'calendar':
+        return 'Kalender wählen';
+      default:
+        return 'Entität wählen';
+    }
+  }
+
+  protected override showEditor_(_e?: Event, _quietInput?: boolean): void {
+    const modal = openSelectorModal({
+      title: this.placeholderLabel(),
+      searchPlaceholder: 'Name oder Bereich suchen…',
+      loadingText: 'Lade Entitäten…',
     });
-
-    const modal = document.createElement('div');
-    modal.className = 'entity-selector-modal';
-
-    const header = document.createElement('div');
-    header.className = 'entity-selector-header';
-    header.innerHTML = '<h3>Entität auswählen</h3>';
-    const closeBtn = document.createElement('button');
-    closeBtn.type = 'button';
-    closeBtn.className = 'entity-selector-close';
-    closeBtn.setAttribute('aria-label', 'Schließen');
-    closeBtn.textContent = '×';
-    closeBtn.addEventListener('click', () => overlay.remove());
-    header.appendChild(closeBtn);
-
-    const searchWrap = document.createElement('div');
-    searchWrap.className = 'entity-selector-search';
-    const searchInput = document.createElement('input');
-    searchInput.type = 'search';
-    searchInput.placeholder = 'Entität suchen…';
-    searchWrap.appendChild(searchInput);
-
-    const content = document.createElement('div');
-    content.className = 'entity-selector-content';
-    content.textContent = 'Lade Entitäten…';
-
-    modal.appendChild(header);
-    modal.appendChild(searchWrap);
-    modal.appendChild(content);
-    overlay.appendChild(modal);
-    document.body.appendChild(overlay);
-    searchInput.focus();
 
     loadEntities()
       .then((entities) => {
         const filtered = this.domainFilter
           ? entities.filter((entity) => entity.domain === this.domainFilter)
           : entities;
-        this.renderEntityTable(content, filtered, searchInput, overlay);
-      })
-      .catch((error: Error) => {
-        content.innerHTML = `<div class="entity-selector-error">${error.message}</div>`;
-      });
-  }
-
-  private renderEntityTable(
-    content: HTMLElement,
-    entities: HaEntity[],
-    searchInput: HTMLInputElement,
-    overlay: HTMLElement,
-  ): void {
-    content.innerHTML = '';
-    const table = document.createElement('table');
-    table.className = 'entity-selector-table';
-    table.innerHTML = `
-      <thead>
-        <tr>
-          <th>Entität</th>
-          <th>Name</th>
-          <th>Status</th>
-        </tr>
-      </thead>
-    `;
-    const tbody = document.createElement('tbody');
-
-    const renderRows = (list: HaEntity[]) => {
-      tbody.replaceChildren();
-      if (list.length === 0) {
-        const empty = document.createElement('tr');
-        empty.innerHTML = '<td colspan="3">Keine Entitäten gefunden.</td>';
-        tbody.appendChild(empty);
-        return;
-      }
-      for (const entity of list) {
-        const row = document.createElement('tr');
-        const unit = entity.unit_of_measurement ? ` ${entity.unit_of_measurement}` : '';
-        row.innerHTML = `
-          <td class="entity-id">${escapeHtml(entity.entity_id)}</td>
-          <td>${escapeHtml(entity.friendly_name)}</td>
-          <td>${escapeHtml(entity.state)}${escapeHtml(unit)}</td>
-        `;
-        row.addEventListener('click', () => {
-          this.setValue(entity.entity_id);
-          overlay.remove();
-        });
-        tbody.appendChild(row);
-      }
-    };
-
-    renderRows(entities);
-    table.appendChild(tbody);
-    content.appendChild(table);
-
-    searchInput.addEventListener('input', () => {
-      const term = searchInput.value.toLowerCase().trim();
-      const matches = !term
-        ? entities
-        : entities.filter((entity) =>
-            [entity.entity_id, entity.friendly_name, entity.state, entity.domain]
+        filtered.sort((a, b) => a.friendly_name.localeCompare(b.friendly_name, 'de'));
+        this.forceRerender();
+        renderSearchableTable({
+          content: modal.content,
+          searchInput: modal.searchInput,
+          columns: ['Name', 'Bereich', 'Status', 'ID'],
+          rows: filtered,
+          emptyText: 'Keine Entitäten gefunden.',
+          renderRow: (entity) => [
+            escapeHtml(entity.friendly_name),
+            escapeHtml(entity.domain),
+            escapeHtml(`${entity.state}${entity.unit_of_measurement ? ` ${entity.unit_of_measurement}` : ''}`),
+            `<span class="entity-id">${escapeHtml(entity.entity_id)}</span>`,
+          ],
+          matches: (entity, term) =>
+            [entity.friendly_name, entity.entity_id, entity.state, entity.domain]
               .join(' ')
               .toLowerCase()
               .includes(term),
-          );
-      renderRows(matches);
-    });
+          onSelect: (entity) => {
+            this.setValue(entity.entity_id);
+            modal.close();
+          },
+        });
+      })
+      .catch((error: Error) => {
+        modal.content.innerHTML = `<div class="entity-selector-error">${escapeHtml(error.message)}</div>`;
+      });
   }
 }
-
-function escapeHtml(value: string): string {
-  return value
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
-}
-

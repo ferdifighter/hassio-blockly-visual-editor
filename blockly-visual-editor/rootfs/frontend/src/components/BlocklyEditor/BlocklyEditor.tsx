@@ -8,7 +8,7 @@ import React, {
 } from 'react';
 import * as Blockly from 'blockly';
 import * as De from 'blockly/msg/de';
-import { registerAllHomeAssistantBlocks } from './blocks';
+import { registerAllHomeAssistantBlocks, warmPickerCaches } from './blocks';
 import { HA_TOOLBOX } from './toolbox';
 import { resolveBlocklyTheme } from './themes';
 import {
@@ -92,6 +92,7 @@ const BlocklyEditor = forwardRef<BlocklyEditorHandle, BlocklyEditorProps>(
         Blockly.Events.enable();
       }
       emitYaml();
+      void warmPickerCaches(workspace);
     }, [emitYaml]);
 
     useEffect(() => {
@@ -145,6 +146,7 @@ const BlocklyEditor = forwardRef<BlocklyEditorHandle, BlocklyEditorProps>(
         workspace.addChangeListener(() => emitYaml());
         resizeWorkspace(workspace);
         setWorkspaceReady(true);
+        void warmPickerCaches(workspace);
       };
 
       const observer = new ResizeObserver(() => injectIfNeeded());
