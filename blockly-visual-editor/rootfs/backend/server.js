@@ -7,6 +7,10 @@ const HOST = '0.0.0.0';
 const yaml = require('js-yaml');
 const axios = require('axios');
 require('dotenv').config();
+const {
+  findMatchingState,
+  pickDeviceName,
+} = require('./notifyNames');
 
 // Home Assistant Umgebungsvariablen
 const SCRIPTS_PATH = '/data/scripts.json';
@@ -705,24 +709,6 @@ app.get('/api/entities', async (req, res) => {
   }
 });
 
-function slugifyNotifyName(value) {
-  return String(value || '')
-    .toLowerCase()
-    .replace(/ä/g, 'ae')
-    .replace(/ö/g, 'oe')
-    .replace(/ü/g, 'ue')
-    .replace(/ß/g, 'ss')
-    .replace(/[^a-z0-9]+/g, '_')
-    .replace(/^_+|_+$/g, '');
-}
-
-function titleFromService(serviceName) {
-  return serviceName
-    .replace(/^mobile_app_/, '')
-    .replace(/_/g, ' ')
-    .replace(/\b\w/g, (char) => char.toUpperCase());
-}
-
 // Companion-App-Smartphones und zugeordnete Personen
 app.get('/api/notify-targets', async (req, res) => {
   const { HA_TOKEN, HA_URL } = getHACredentials();
@@ -741,7 +727,6 @@ app.get('/api/notify-targets', async (req, res) => {
 
     const states = Array.isArray(statesResult.data) ? statesResult.data : [];
     const persons = states.filter((entity) => entity.entity_id.startsWith('person.'));
-    const trackers = states.filter((entity) => entity.entity_id.startsWith('device_tracker.'));
 
     const notifyDomain = (servicesResult.data || []).find((entry) => entry.domain === 'notify');
     const services = notifyDomain?.services || {};
@@ -750,15 +735,14 @@ app.get('/api/notify-targets', async (req, res) => {
       .map(([name, meta]) => ({
         serviceName: name,
         service: `notify.${name}`,
-        name: (meta && meta.name) || titleFromService(name)
+        name: meta && meta.name
       }));
 
     const targets = mobileServices.map((svc) => {
       const objectId = svc.serviceName.replace(/^mobile_app_/, '');
-      const trackerId = `device_tracker.${objectId}`;
-      const tracker = trackers.find((item) => item.entity_id === trackerId)
-        || trackers.find((item) => slugifyNotifyName(item.attributes?.friendly_name) === objectId)
-        || trackers.find((item) => item.entity_id.replace('device_tracker.', '').includes(objectId));
+      const tracker = findMatchingState(states, ['device_tracker.'], objectId);
+      const notifyEntity = findMatchingState(states, ['notify.'], svc.serviceName)
+        || findMatchingState(states, ['notify.'], objectId);
 
       const person = persons.find((item) => {
         const deviceTrackers = item.attributes?.device_trackers || [];
@@ -768,7 +752,12 @@ app.get('/api/notify-targets', async (req, res) => {
         return deviceTrackers.some((id) => id.replace('device_tracker.', '') === objectId);
       });
 
-      const deviceName = tracker?.attributes?.friendly_name || svc.name;
+      const deviceName = pickDeviceName({
+        serviceName: svc.serviceName,
+        serviceMetaName: svc.name,
+        tracker,
+        notifyEntity,
+      });
       const personName = person?.attributes?.friendly_name || null;
 
       return {

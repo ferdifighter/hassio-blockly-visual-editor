@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.3.5
+
+- Smartphone-Namen im Benachrichtigungsdialog werden nicht mehr verdoppelt
+- Anzeigename kommt von Gerät/Entität, nicht vom internen Notify-Dienstnamen
+
 ## 0.3.4
 
 - Entitäten werden mit ihrem Anzeigenamen statt der Entity-ID dargestellt
