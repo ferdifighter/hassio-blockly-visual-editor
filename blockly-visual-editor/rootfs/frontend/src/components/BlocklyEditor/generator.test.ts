@@ -7,6 +7,7 @@ import {
   blockToTrigger,
   emptyWorkspaceState,
   toYaml,
+  workspaceHasUserContent,
   workspaceToAutomation,
 } from './generator';
 
@@ -82,5 +83,23 @@ describe('Home Assistant Blockly-Generator', () => {
 
   it('serialisiert verschachtelte Objekte als YAML', () => {
     expect(toYaml({ triggers: [{ trigger: 'time', at: '07:00' }] })).toContain('- trigger: time');
+  });
+
+  it('erkennt einen leeren Workspace ohne Nutzerinhalt', () => {
+    const workspace = new Blockly.Workspace();
+    Blockly.serialization.workspaces.load(emptyWorkspaceState(), workspace);
+    expect(workspaceHasUserContent(workspace)).toBe(false);
+    workspace.dispose();
+  });
+
+  it('erkennt Trigger und Aktionen als Nutzerinhalt', () => {
+    const workspace = new Blockly.Workspace();
+    Blockly.serialization.workspaces.load(emptyWorkspaceState(), workspace);
+    const root = workspace.getBlocksByType('ha_automation', false)[0];
+    const trigger = workspace.newBlock('ha_time_trigger');
+    trigger.setFieldValue('11:13', 'TIME');
+    root.getInput('TRIGGERS')?.connection?.connect(trigger.previousConnection!);
+    expect(workspaceHasUserContent(workspace)).toBe(true);
+    workspace.dispose();
   });
 });

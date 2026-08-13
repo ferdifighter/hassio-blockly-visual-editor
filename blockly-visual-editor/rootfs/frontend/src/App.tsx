@@ -52,6 +52,7 @@ const App: React.FC = () => {
       <header className="app-toolbar">
         <Toolbar
           currentAutomationName={toolbarData.currentAutomationName}
+          currentAutomationId={toolbarData.currentAutomationId}
           currentAutomationStatus={toolbarData.currentAutomationStatus}
           yamlOpen={yamlOpen}
           onSave={() => blocklyEditorRef.current?.handleSave()}

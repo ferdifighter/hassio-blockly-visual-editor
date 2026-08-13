@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.3.3
+
+- Neue Automatisierungen werden sofort ausgewählt, damit Speichern aktiv ist
+- Blöcke auf dem Canvas bleiben erhalten, wenn eine neue Automatisierung angelegt wird
+- Speichern und Blockprüfung hängen an der Automatisierungs-ID, nicht nur am Namen
+
 ## 0.3.2
 
 - Benachrichtigungen gehen an Smartphones mit Home Assistant Companion App

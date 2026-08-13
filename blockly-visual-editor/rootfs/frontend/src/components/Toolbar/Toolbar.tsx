@@ -3,6 +3,7 @@ import './Toolbar.css';
 
 interface ToolbarProps {
   currentAutomationName?: string | null;
+  currentAutomationId?: string | null;
   currentAutomationStatus?: 'on' | 'off' | undefined;
   yamlOpen?: boolean;
   onRenameAutomation?: (newName: string) => void;
@@ -13,6 +14,7 @@ interface ToolbarProps {
 
 const Toolbar: React.FC<ToolbarProps> = ({
   currentAutomationName,
+  currentAutomationId,
   currentAutomationStatus,
   yamlOpen,
   onRenameAutomation,
@@ -34,10 +36,13 @@ const Toolbar: React.FC<ToolbarProps> = ({
     setIsEditingAutomationName(false);
   };
 
+  const hasAutomation = Boolean(currentAutomationId);
+  const displayName = currentAutomationName || 'Neue Automatisierung';
+
   return (
     <div className="toolbar-blockly">
       <div className="toolbar-title">
-        {currentAutomationName ? (
+        {hasAutomation ? (
           isEditingAutomationName ? (
             <input
               className="toolbar-name-input"
@@ -52,7 +57,7 @@ const Toolbar: React.FC<ToolbarProps> = ({
             />
           ) : (
             <button type="button" className="toolbar-name" onClick={() => setIsEditingAutomationName(true)}>
-              {currentAutomationName}
+              {displayName}
             </button>
           )
         ) : (
@@ -65,10 +70,10 @@ const Toolbar: React.FC<ToolbarProps> = ({
         )}
       </div>
       <div className="toolbar-actions">
-        <button className="toolbar-btn primary" onClick={onSave} disabled={!currentAutomationName}>
+        <button className="toolbar-btn primary" onClick={onSave} disabled={!hasAutomation}>
           Speichern
         </button>
-        <button className="toolbar-btn" onClick={onCheckBlocks} disabled={!currentAutomationName}>
+        <button className="toolbar-btn" onClick={onCheckBlocks} disabled={!hasAutomation}>
           Blöcke prüfen
         </button>
         <button className={`toolbar-btn ${yamlOpen ? 'active' : ''}`} onClick={onShowCode}>

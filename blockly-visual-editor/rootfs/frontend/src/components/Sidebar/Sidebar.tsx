@@ -156,8 +156,43 @@ interface SidebarProps {
   }) => void;
 }
 
+const EMPTY_TREE = { id: 'root', name: '', children: [] as any[] };
+
+function collectNodeIds(node: any, ids: Set<string> = new Set()): Set<string> {
+  if (!node) return ids;
+  if (node.id) ids.add(String(node.id));
+  if (Array.isArray(node.children)) {
+    node.children.forEach((child: any) => collectNodeIds(child, ids));
+  }
+  return ids;
+}
+
+function findNodeById(node: any, id: string | null): any | null {
+  if (!node || !id) return null;
+  if (node.id === id) return node;
+  if (Array.isArray(node.children)) {
+    for (const child of node.children) {
+      const found = findNodeById(child, id);
+      if (found) return found;
+    }
+  }
+  return null;
+}
+
+function persistTreeData(tree: any) {
+  if (!tree) return;
+  fetch(getApiUrl('api/scripts'), {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(tree),
+  }).catch((error) => {
+    console.error('Fehler beim Speichern des Baums:', error);
+  });
+}
+
 const Sidebar: React.FC<SidebarProps> = ({ onSelectionChange }) => {
-  const [treeObj, setTreeObj] = useState<any>(null);
+  const [treeObj, setTreeObj] = useState<any>(EMPTY_TREE);
+  const treeDirtyRef = useRef(false);
   // Status-Map: { [id]: 'on' | 'off' }
   const [automationStatus, setAutomationStatus] = useState<{ [id: string]: 'on' | 'off' | undefined }>({});
   const [runningAutomationId, setRunningAutomationId] = useState<string | null>(null);
@@ -259,17 +294,26 @@ const Sidebar: React.FC<SidebarProps> = ({ onSelectionChange }) => {
     fetch(getApiUrl('api/scripts'))
       .then(res => res.json())
       .then(data => {
-        if (!data || typeof data !== 'object' || !Array.isArray(data.children)) {
-          setTreeObj({ name: '', children: [] });
-          // setTreeData([]); // This line was removed as per the edit hint.
-        } else {
-            setTreeObj(data);
-            // setTreeData(flattenTreeWithType(data)); // This line was removed as per the edit hint.
-        }
+        const serverTree = (!data || typeof data !== 'object' || !Array.isArray(data.children))
+          ? { ...EMPTY_TREE }
+          : data;
+        setTreeObj((prev: any) => {
+          if (!treeDirtyRef.current) {
+            return serverTree;
+          }
+          const localIds = collectNodeIds(prev);
+          const extras = (serverTree.children || []).filter((child: any) => child && !localIds.has(String(child.id)));
+          const merged = {
+            ...serverTree,
+            id: serverTree.id || 'root',
+            children: [...(prev.children || []), ...extras],
+          };
+          persistTreeData(merged);
+          return merged;
+        });
       })
       .catch(() => {
-        setTreeObj({ name: '', children: [] });
-        // setTreeData([]); // This line was removed as per the edit hint.
+        setTreeObj((prev: any) => (treeDirtyRef.current ? prev : { ...EMPTY_TREE }));
       });
   }, []);
 
@@ -401,13 +445,14 @@ const Sidebar: React.FC<SidebarProps> = ({ onSelectionChange }) => {
 
   // Neue Automatisierung anlegen
   const handleNewAutomation = () => {
-    if (!treeObj) return;
+    const baseTree = treeObj || { ...EMPTY_TREE };
     const newId = 'automation_' + Math.random().toString(36).substr(2, 9);
     const defaultName = getDefaultAutomationName();
     const newAutomation = { name: defaultName, type: 'automation', id: newId };
+    const selectedFolder = findNodeById(baseTree, selectedId);
     let updatedTree;
     
-    if (selectedId) {
+    if (selectedFolder && selectedFolder.type === 'folder') {
       const addToFolder = (node: any): any => {
         if (node.id === selectedId && node.type === 'folder') {
           return { ...node, children: [...(node.children || []), newAutomation] };
@@ -417,24 +462,27 @@ const Sidebar: React.FC<SidebarProps> = ({ onSelectionChange }) => {
         }
         return node;
       };
-      updatedTree = addToFolder(treeObj);
+      updatedTree = addToFolder(baseTree);
       
       // Klappe den Zielordner auf, falls er geschlossen ist
       setExpandedIds(prev => {
         const prevArray = Array.isArray(prev) ? prev : [];
-        return prevArray.includes(selectedId) ? prevArray : [...prevArray, selectedId];
+        return prevArray.includes(selectedId!) ? prevArray : [...prevArray, selectedId!];
       });
     } else {
       updatedTree = {
-        ...treeObj,
-        children: [...(treeObj.children || []), newAutomation]
+        ...baseTree,
+        id: baseTree.id || 'root',
+        children: [...(baseTree.children || []), newAutomation]
       };
     }
     
+    treeDirtyRef.current = true;
     setTreeObj(updatedTree);
-    // setTreeData(flattenTreeWithType(updatedTree)); // This line was removed as per the edit hint.
+    setSelectedId(newId);
     setEditingValue(defaultName);
     setEditingId(newId);
+    persistTreeData(updatedTree);
   };
 
   // Hilfsfunktion: Eindeutigen Standardnamen für Ordner generieren
@@ -493,10 +541,11 @@ const Sidebar: React.FC<SidebarProps> = ({ onSelectionChange }) => {
       });
     }
     
+    treeDirtyRef.current = true;
     setTreeObj(updatedTree);
-    // setTreeData(flattenTreeWithType(updatedTree)); // This line was removed as per the edit hint.
     setEditingValue(defaultName);
     setEditingId(newId);
+    persistTreeData(updatedTree);
   };
 
   // Hilfsfunktion: entity_id aus Alias generieren (Slugify wie im Backend)
@@ -563,19 +612,11 @@ const Sidebar: React.FC<SidebarProps> = ({ onSelectionChange }) => {
     
     const updatedTree = updateNameInTree(treeObj, id, finalName);
     
+    treeDirtyRef.current = true;
     setTreeObj(updatedTree);
-    // setTreeData(flattenTreeWithType(updatedTree)); // This line was removed as per the edit hint.
     setEditingId(null);
     setEditingValue('');
-    
-    // Backend speichern (ohne erneutes Laden)
-    fetch(getApiUrl('api/scripts'), {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(updatedTree)
-    }).catch(error => {
-      console.error('Fehler beim Speichern:', error);
-      });
+    persistTreeData(updatedTree);
   };
 
   // Abbrechen
@@ -602,21 +643,17 @@ const Sidebar: React.FC<SidebarProps> = ({ onSelectionChange }) => {
       };
     };
     const updatedTree = removeById(treeObj, deleteTarget.id);
+    treeDirtyRef.current = true;
     setTreeObj(updatedTree);
-    // setTreeData(flattenTreeWithType(updatedTree)); // This line was removed as per the edit hint.
     if (editingId === deleteTarget.id) {
       setEditingId(null);
       setEditingValue('');
     }
+    if (selectedId === deleteTarget.id) {
+      setSelectedId(null);
+    }
     setDeleteTarget(null);
-    
-    fetch(getApiUrl('api/scripts'), {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(updatedTree)
-    }).catch(error => {
-      console.error('Fehler beim Löschen:', error);
-      });
+    persistTreeData(updatedTree);
   };
 
   const cancelDelete = () => setDeleteTarget(null);
@@ -672,16 +709,9 @@ const Sidebar: React.FC<SidebarProps> = ({ onSelectionChange }) => {
     if (!movedNode) return;
     const newTree = addNode(treeWithout, dropId, movedNode);
     
+    treeDirtyRef.current = true;
     setTreeObj(newTree);
-    // setTreeData(flattenTreeWithType(newTree)); // This line was removed as per the edit hint.
-    
-    fetch(getApiUrl('api/scripts'), {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(newTree)
-    }).catch(error => {
-      console.error('Fehler beim Drag & Drop:', error);
-      });
+    persistTreeData(newTree);
   };
 
   // Toolbar-Integration
@@ -725,16 +755,9 @@ const Sidebar: React.FC<SidebarProps> = ({ onSelectionChange }) => {
       if (!movedNode) return;
     const newTree = addNode(treeWithout, folderId, movedNode);
     
+    treeDirtyRef.current = true;
     setTreeObj(newTree);
-    // setTreeData(flattenTreeWithType(newTree)); // This line was removed as per the edit hint.
-    
-    fetch(getApiUrl('api/scripts'), {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(newTree)
-    }).catch(error => {
-      console.error('Fehler beim Drag & Drop:', error);
-    });
+    persistTreeData(newTree);
         }, [selectedAutomation, treeObj]);
 
   // Callback für Toolbar
@@ -811,6 +834,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onSelectionChange }) => {
             <TreeView
               data={sanitizeTreeData(treeData)}
               aria-label="Script-Explorer"
+              selectedIds={selectedId ? [selectedId] : []}
               expandedIds={expandedIds}
               onExpand={({ element, isExpanded }) => {
                 if (isExpanded) {

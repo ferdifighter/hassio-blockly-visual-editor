@@ -15,6 +15,7 @@ import {
   automationToYaml,
   emptyWorkspaceState,
   validateWorkspace,
+  workspaceHasUserContent,
   workspaceToAutomation,
   type HomeAssistantAutomation,
   type WorkspaceState,
@@ -52,6 +53,7 @@ const BlocklyEditor = forwardRef<BlocklyEditorHandle, BlocklyEditorProps>(
   ({ theme, automationId, automationName, onYamlChange, onStatus }, ref) => {
     const blocklyDiv = useRef<HTMLDivElement>(null);
     const workspaceRef = useRef<Blockly.WorkspaceSvg | null>(null);
+    const loadedAutomationIdRef = useRef<string | null>(null);
     const [workspaceReady, setWorkspaceReady] = useState(false);
     const [status, setStatus] = useState<{ message: string; kind: 'info' | 'success' | 'error' } | null>(null);
     const [loading, setLoading] = useState(false);
@@ -176,10 +178,22 @@ const BlocklyEditor = forwardRef<BlocklyEditorHandle, BlocklyEditorProps>(
         return;
       }
       if (!automationId) {
-        Blockly.serialization.workspaces.load(emptyWorkspaceState(), workspaceRef.current);
-        onYamlChange?.('');
+        loadedAutomationIdRef.current = null;
+        if (!workspaceHasUserContent(workspaceRef.current)) {
+          Blockly.serialization.workspaces.load(emptyWorkspaceState(), workspaceRef.current);
+          onYamlChange?.('');
+        }
         return;
       }
+
+      const keepUnsavedDraft = () => {
+        const workspace = workspaceRef.current;
+        return Boolean(
+          !loadedAutomationIdRef.current &&
+          workspace &&
+          workspaceHasUserContent(workspace),
+        );
+      };
 
       let cancelled = false;
       setLoading(true);
@@ -190,6 +204,7 @@ const BlocklyEditor = forwardRef<BlocklyEditorHandle, BlocklyEditorProps>(
           }
           if (data.workspace && data.workspace.blocks) {
             loadWorkspaceState(data.workspace);
+            loadedAutomationIdRef.current = automationId;
             return;
           }
           if (data.xml) {
@@ -198,16 +213,27 @@ const BlocklyEditor = forwardRef<BlocklyEditorHandle, BlocklyEditorProps>(
               workspaceRef.current.clear();
               Blockly.Xml.domToWorkspace(dom, workspaceRef.current);
               emitYaml();
+              loadedAutomationIdRef.current = automationId;
               return;
             } catch (error) {
               console.warn('Altes XML konnte nicht importiert werden:', error);
             }
           }
-          loadWorkspaceState(emptyWorkspaceState());
+          if (!keepUnsavedDraft()) {
+            loadWorkspaceState(emptyWorkspaceState());
+          } else {
+            emitYaml();
+          }
+          loadedAutomationIdRef.current = automationId;
         })
         .catch(() => {
           if (!cancelled) {
-            loadWorkspaceState(emptyWorkspaceState());
+            if (!keepUnsavedDraft()) {
+              loadWorkspaceState(emptyWorkspaceState());
+            } else {
+              emitYaml();
+            }
+            loadedAutomationIdRef.current = automationId;
           }
         })
         .finally(() => {

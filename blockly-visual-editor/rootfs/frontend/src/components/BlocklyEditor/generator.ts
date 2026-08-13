@@ -360,6 +360,14 @@ export function workspaceToAutomation(
   };
 }
 
+export function workspaceHasUserContent(workspace: Blockly.Workspace): boolean {
+  const automation = workspaceToAutomation(workspace, { id: 'preview', alias: 'preview' });
+  if (automation.triggers.length || automation.conditions.length || automation.actions.length) {
+    return true;
+  }
+  return workspace.getTopBlocks(false).some((block) => block.type !== 'ha_automation');
+}
+
 export function validateWorkspace(workspace: Blockly.Workspace): string[] {
   const warnings: string[] = [];
   const automation = workspaceToAutomation(workspace, { id: 'preview', alias: 'preview' });
