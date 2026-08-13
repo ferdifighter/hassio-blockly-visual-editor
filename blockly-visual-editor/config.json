@@ -3,6 +3,8 @@
   "version": "0.3.0",
   "slug": "blockly-visual-editor",
   "description": "Ein visueller Editor für Blockly-basierte Automatisierungen in Home Assistant",
+  "url": "https://github.com/ferdifighter/hassio-blockly-visual-editor",
+  "changelog": "https://github.com/ferdifighter/hassio-blockly-visual-editor/blob/main/blockly-visual-editor/CHANGELOG.md",
   "author": "FerdiFighter",
   "arch": [
     "armhf",

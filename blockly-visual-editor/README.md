@@ -1,5 +1,7 @@
 # Home Assistant Add-on: Blockly Visual Editor
 
+**Aktuelle Version: 0.3.0**
+
 Visueller Editor für Home-Assistant-Automatisierungen auf Basis von [Google Blockly](https://developers.google.com/blockly).
 
 Statt YAML von Hand zu schreiben, setzt du Blöcke zusammen. Das Add-on erzeugt daraus eine echte Home-Assistant-Automatisierung und schreibt sie nach `automations.yaml`.
