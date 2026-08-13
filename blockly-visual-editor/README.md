@@ -1,27 +1,43 @@
 # Home Assistant Add-on: Blockly Visual Editor
 
-Ein visueller Editor für Blockly-basierte Automatisierungen in Home Assistant.
+Visueller Editor für Home-Assistant-Automatisierungen auf Basis von [Google Blockly](https://developers.google.com/blockly).
+
+Statt YAML von Hand zu schreiben, setzt du Blöcke zusammen. Das Add-on erzeugt daraus eine echte Home-Assistant-Automatisierung und schreibt sie nach `automations.yaml`.
+
+## Was ist neu in 0.3.0
+
+- Offizielle Blockly-JSON-Serialisierung statt Legacy-XML
+- JSON-Toolbox und JSON-Blockdefinitionen
+- Eigener Blockly-Generator für Home-Assistant-YAML (`triggers` / `conditions` / `actions`)
+- Zelos-Renderer, Theme-Wechsel ohne Workspace-Verlust
+- Speichern und Laden über die moderne Blockly-API
 
 ## Features
 
-- Visueller Blockly-Editor für Home Assistant Automatisierungen
-- Drag & Drop Interface
-- Export/Import von Automatisierungen
-- Integration mit Home Assistant API
+- Drag-and-Drop-Editor in der Home-Assistant-Seitenleiste
+- Trigger, Bedingungen, Aktionen, Geräte und Logik als Blöcke
+- Entity-Auswahl aus deiner Home-Assistant-Instanz
+- YAML-Vorschau der erzeugten Automatisierung
+- Ordner, Umbenennen, Drag & Drop in der Sidebar
 
 ## Installation
 
-1. Füge dieses Repository zu deinen Home Assistant Add-on Repositories hinzu
-2. Installiere das Add-on über die Home Assistant UI
-3. Starte das Add-on
+1. Dieses Repository zu den Home-Assistant-Add-on-Repositories hinzufügen
+2. Add-on installieren und starten
+3. Panel **Blockly Editor** in der Seitenleiste öffnen
 
 ## Entwicklung
 
-Dieses Add-on wird mit Node.js entwickelt und verwendet:
-- Express.js für den Server
-- Blockly für den visuellen Editor
-- Home Assistant REST API für die Integration
+- Frontend: React + Vite + Blockly
+- Backend: Express, schreibt `/config/automations.yaml` und Blockly-Zustand nach `/config/blockly_visual_editor/`
+
+```bash
+cd blockly-visual-editor/rootfs/frontend
+npm install
+npm test
+npm run build
+```
 
 ## Lizenz
 
-MIT License 
+MIT License

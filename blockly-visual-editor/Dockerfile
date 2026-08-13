@@ -1,37 +1,31 @@
 ARG BUILD_FROM
+FROM node:22-alpine AS frontend-build
+WORKDIR /frontend
+COPY rootfs/frontend/package.json rootfs/frontend/package-lock.json* ./
+RUN npm install --no-audit --fund=false
+COPY rootfs/frontend ./
+RUN npm run build
+
 FROM $BUILD_FROM
 
-# Set shell
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
-# Setup base
 RUN \
     apk add --no-cache \
         nodejs \
         npm \
-        git \
         bash
 
-# Frontend-Build kopieren (wird außerhalb gebaut!)
-COPY rootfs/frontend/build /frontend/build
+COPY --from=frontend-build /frontend/build /frontend/build
 
-# Toolbox-XMLs direkt an den Zielort für Home Assistant kopieren
-RUN mkdir -p /config/www/toolbox/de /config/www/toolbox/en
-COPY rootfs/frontend/public/toolbox/de /config/www/toolbox/de
-COPY rootfs/frontend/public/toolbox/en /config/www/toolbox/en
-
-# Backend kopieren und Abhängigkeiten installieren
 COPY rootfs/backend /backend
 WORKDIR /backend
-RUN npm install --production
+RUN npm install --omit=dev --no-audit --fund=false
 
-# Restliche rootfs kopieren (z. B. run.sh, ggf. weitere Konfigs)
 WORKDIR /
-COPY rootfs /rootfs
 COPY run.sh /
 RUN chmod a+x /run.sh
 
-# Build arguments
 ARG BUILD_ARCH
 ARG BUILD_DATE
 ARG BUILD_DESCRIPTION
@@ -40,13 +34,12 @@ ARG BUILD_REF
 ARG BUILD_REPOSITORY
 ARG BUILD_VERSION
 
-# Labels
 LABEL \
     io.hass.name="${BUILD_NAME}" \
     io.hass.description="${BUILD_DESCRIPTION}" \
     io.hass.arch="${BUILD_ARCH}" \
     io.hass.type="addon" \
     io.hass.version="${BUILD_VERSION}" \
-    maintainer="Franck Nijhof <frenck@addons.community>"
+    maintainer="FerdiFighter"
 
-CMD [ "/run.sh" ] 
+CMD [ "/run.sh" ]

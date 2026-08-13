@@ -4,6 +4,7 @@ import { FaFolderPlus, FaFile, FaArrowUp, FaArrowDown, FaRegFolder, FaRegFolderO
 import './Sidebar.css';
 import { DndProvider, useDrag, useDrop } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
+import { getApiUrl } from '../../api';
 
 // Icons explizit als React-Komponenten typisieren
 const FaFolderPlusIcon = FaFolderPlus as React.ComponentType<any>;
@@ -18,30 +19,6 @@ const FaPlayIcon = FaPlay as React.ComponentType<any>;
 const FaPauseIcon = FaPause as React.ComponentType<any>;
 const FaFolderOpenIcon = FaFolderOpen as React.ComponentType<any>;
 const FaFolderClosedIcon = FaFolderClosed as React.ComponentType<any>;
-
-const getApiUrl = (endpoint: string) => {
-  console.log('Sidebar getApiUrl Debug:', {
-    hostname: window.location.hostname,
-    protocol: window.location.protocol,
-    host: window.location.host,
-    pathname: window.location.pathname,
-    endpoint
-  });
-  
-  // Für lokale Entwicklung (localhost)
-  if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-    const url = `http://localhost:8099/${endpoint.replace(/^\//, '')}`;
-    console.log('Lokale Entwicklung - URL:', url);
-    return url;
-  }
-  
-  // Für Home Assistant Ingress
-  // Der Ingress-Pfad ist bereits im pathname enthalten, also verwende den gleichen Host
-  const base = window.location.pathname.endsWith('/') ? window.location.pathname : window.location.pathname + '/';
-  const url = `${window.location.protocol}//${window.location.host}${base}${endpoint.replace(/^\//, '')}`;
-  console.log('Home Assistant Ingress - URL:', url);
-  return url;
-};
 
 function updateNameInTree(tree: any, id: string, newName: string): any {
   if (!tree || !id) return tree;
@@ -314,7 +291,9 @@ const Sidebar: React.FC<SidebarProps> = ({ onSelectionChange }) => {
   const getAllAutomationIds = (tree: any): string[] => {
     if (!tree) return [];
     let ids: string[] = [];
-    if (tree.type === 'automation' && tree.id) ids.push(tree.id);
+    if ((tree.type === 'automation' || tree.type === 'script') && tree.id) {
+      ids.push(tree.id);
+    }
     if (tree.children) {
       tree.children.forEach((child: any) => {
         ids = ids.concat(getAllAutomationIds(child));
@@ -765,7 +744,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onSelectionChange }) => {
         folders,
         currentFolderId,
         currentAutomationName,
-        currentAutomationId: selectedId,
+        currentAutomationId: selectedAutomation ? selectedId : null,
         currentAutomationStatus: selectedId ? automationStatus[selectedId] : undefined,
         moveAutomationToFolder,
       });

@@ -1,0 +1,77 @@
+export const HA_TOOLBOX = {
+  kind: 'categoryToolbox',
+  contents: [
+    {
+      kind: 'category',
+      name: 'Automatisierung',
+      colour: '#5C6BC0',
+      contents: [{ kind: 'block', type: 'ha_automation' }],
+    },
+    {
+      kind: 'category',
+      name: 'Trigger',
+      colour: '#FF6680',
+      contents: [
+        { kind: 'block', type: 'ha_time_trigger' },
+        { kind: 'block', type: 'ha_state_trigger' },
+        { kind: 'block', type: 'ha_numeric_state_trigger' },
+        { kind: 'block', type: 'ha_event_trigger' },
+        { kind: 'block', type: 'ha_webhook_trigger' },
+        { kind: 'block', type: 'ha_sun_trigger' },
+        { kind: 'block', type: 'ha_template_trigger' },
+        { kind: 'block', type: 'ha_homeassistant_trigger' },
+      ],
+    },
+    {
+      kind: 'category',
+      name: 'Bedingungen',
+      colour: '#F9A825',
+      contents: [
+        { kind: 'block', type: 'ha_if_state' },
+        { kind: 'block', type: 'ha_if_numeric_state' },
+        { kind: 'block', type: 'ha_if_time' },
+        { kind: 'block', type: 'ha_if_sun' },
+        { kind: 'block', type: 'ha_if_template' },
+      ],
+    },
+    {
+      kind: 'category',
+      name: 'Logik',
+      colour: '#43A047',
+      contents: [
+        { kind: 'block', type: 'ha_if_and' },
+        { kind: 'block', type: 'ha_if_or' },
+        { kind: 'block', type: 'ha_if_not' },
+      ],
+    },
+    {
+      kind: 'category',
+      name: 'Aktionen',
+      colour: '#26A69A',
+      contents: [
+        { kind: 'block', type: 'ha_call_service' },
+        { kind: 'block', type: 'ha_activate_scene' },
+        { kind: 'block', type: 'ha_notify' },
+        { kind: 'block', type: 'ha_delay' },
+        { kind: 'block', type: 'ha_wait_for_state' },
+        { kind: 'block', type: 'ha_wait_for_template' },
+        { kind: 'block', type: 'ha_repeat' },
+        { kind: 'block', type: 'ha_repeat_while' },
+        { kind: 'block', type: 'ha_if_else' },
+        { kind: 'block', type: 'ha_stop' },
+        { kind: 'block', type: 'ha_set_variable' },
+      ],
+    },
+    {
+      kind: 'category',
+      name: 'Geräte',
+      colour: '#FB8C00',
+      contents: [
+        { kind: 'block', type: 'ha_light_on' },
+        { kind: 'block', type: 'ha_light_off' },
+        { kind: 'block', type: 'ha_switch_toggle' },
+        { kind: 'block', type: 'ha_send_push' },
+      ],
+    },
+  ],
+};

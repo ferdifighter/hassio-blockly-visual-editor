@@ -1,0 +1,13 @@
+node_modules/
+.DS_Store
+*.log
+npm-debug.log*
+.vscode/
+.idea/
+
+# Frontend build artifacts (image is built in Docker)
+blockly-visual-editor/rootfs/frontend/build/
+blockly-visual-editor/rootfs/frontend/coverage/
+
+# Backend dependencies are installed in the add-on image
+blockly-visual-editor/rootfs/backend/node_modules/

@@ -12,6 +12,8 @@ interface ToolbarProps {
   currentAutomationStatus?: 'on' | 'off' | undefined;
   onRenameAutomation?: (newName: string) => void;
   onSave?: () => void;
+  onCheckBlocks?: () => void;
+  onShowCode?: () => void;
 }
 
 const Toolbar: React.FC<ToolbarProps> = ({ 
@@ -24,7 +26,9 @@ const Toolbar: React.FC<ToolbarProps> = ({
   currentAutomationName,
   currentAutomationStatus,
   onRenameAutomation,
-  onSave
+  onSave,
+  onCheckBlocks,
+  onShowCode,
 }) => {
   const [automationNameInput, setAutomationNameInput] = useState<string>('');
   const [isEditingAutomationName, setIsEditingAutomationName] = useState<boolean>(false);
@@ -168,9 +172,8 @@ const Toolbar: React.FC<ToolbarProps> = ({
       <div className="toolbar-row toolbar-row-bottom-flex">
         <div className="toolbar-bottom-left">
           <button className="toolbar-btn" onClick={onSave}><span role="img" aria-label="save">💾</span> Speichern</button>
-          <button className="toolbar-btn"><span role="img" aria-label="cancel">✖</span> Abbrechen</button>
-          <button className="toolbar-btn"><span role="img" aria-label="check">✔</span> Check blocks</button>
-          <button className="toolbar-btn" disabled>Show code</button>
+          <button className="toolbar-btn" onClick={onCheckBlocks}><span role="img" aria-label="check">✔</span> Blöcke prüfen</button>
+          <button className="toolbar-btn" onClick={onShowCode}><span role="img" aria-label="code">{'</>'}</span> YAML anzeigen</button>
         </div>
         <div className="toolbar-bottom-right-row">
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'nowrap', overflowX: 'auto', minWidth: 0 }}>

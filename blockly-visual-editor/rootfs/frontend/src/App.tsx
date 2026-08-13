@@ -1,24 +1,20 @@
-import React, { useState, useMemo, useEffect, useRef } from 'react';
-import { DockingLayout, DockingLayoutConfig, DockingPanelConfig } from '@ferdifighter/react-docking-layout';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { DockingLayout, DockingLayoutConfig } from '@ferdifighter/react-docking-layout';
 import '@ferdifighter/react-docking-layout/dist/styles.css';
 import '@ferdifighter/react-docking-layout/dist/themes/dark.theme.css';
 import '@ferdifighter/react-docking-layout/dist/themes/light.theme.css';
 import './App.css';
-import BlocklyEditor from './components/BlocklyEditor/BlocklyEditor';
+import BlocklyEditor, { BlocklyEditorHandle } from './components/BlocklyEditor/BlocklyEditor';
 import Toolbar from './components/Toolbar/Toolbar';
 import Sidebar from './components/Sidebar/Sidebar';
 
-
 const App: React.FC = () => {
-  const [closedPanels, setClosedPanels] = useState<string[]>(['outline', 'problems']);
-  const [theme, setTheme] = useState<'light' | 'dark' | 'auto'>('auto');
+  const [closedPanels, setClosedPanels] = useState<string[]>([]);
+  const [theme] = useState<'light' | 'dark' | 'auto'>('auto');
   const [selectedAutomationId, setSelectedAutomationId] = useState<string | null>(null);
-  const blocklyEditorRef = useRef<any>(null);
+  const [yamlPreview, setYamlPreview] = useState('');
+  const blocklyEditorRef = useRef<BlocklyEditorHandle>(null);
 
-  // Theme wird standardmäßig auf 'auto' gesetzt
-  // Die Addon-Konfiguration wird nicht mehr verwendet, da /api/addon/config nicht existiert
-
-  // State für Toolbar-Daten aus Sidebar
   const [toolbarData, setToolbarData] = useState<{
     folders: { id: string; name: string }[];
     currentFolderId: string | null;
@@ -26,208 +22,140 @@ const App: React.FC = () => {
     currentAutomationId: string | null;
     currentAutomationStatus: 'on' | 'off' | undefined;
     moveAutomationToFolder: (folderId: string) => void;
-  }>({ 
-    folders: [], 
-    currentFolderId: null, 
-    currentAutomationName: null, 
+  }>({
+    folders: [],
+    currentFolderId: null,
+    currentAutomationName: null,
     currentAutomationId: null,
     currentAutomationStatus: undefined,
-    moveAutomationToFolder: () => {}
+    moveAutomationToFolder: () => {},
   });
 
-  const getClosablePanels = (config: DockingLayoutConfig): { id: string; title: string }[] => {
-    const result: { id: string; title: string }[] = [];
-    config.columns.forEach(col => {
-      col.panels.forEach(panel => {
-        if (panel.id !== 'toolbox' && panel.closable !== false) {
-          result.push({ id: panel.id, title: panel.title });
-        }
-      });
-    });
-    return result;
-  };
-
-  // Panels, die immer als Checkbox angezeigt werden sollen
-  const allPanels = [
-    { id: 'output', title: 'Output' },
-    { id: 'terminal', title: 'Terminal' },
-    { id: 'outline', title: 'Outline' },
-    { id: 'problems', title: 'Problems' },
-  ];
-
-  const [layoutConfig, setLayoutConfig] = useState<DockingLayoutConfig>({
-    columns: [
-      {
-        id: 'left',
-        width: 300,
-        panels: [
-          {
-            id: 'explorer',
-            title: 'Explorer',
-            closable: false,
-            pinned: true,
-            hideHeader: true,
-            content: (
-              <Sidebar 
-                onSelectionChange={(data) => {
-                  setToolbarData({
-                    folders: data.folders,
-                    currentFolderId: data.currentFolderId,
-                    currentAutomationName: data.currentAutomationName,
-                    currentAutomationId: data.currentAutomationId,
-                    currentAutomationStatus: data.currentAutomationStatus,
-                    moveAutomationToFolder: data.moveAutomationToFolder
-                  });
-                  // Automatisierungs-Auswahl übernehmen
-                  setSelectedAutomationId(data.currentAutomationId);
-                }}
-              />
-            ),
-          },     
-        ],
-      },
-      {
-        id: 'center',
-        panels: [
-          {
-            id: 'toolbar',
-            title: 'Toolbar',
-            closable: false,
-            canPin: false,
-            hideHeader: true,
-            resizable: false,
-            size: 100,
-            content: null, // Wird unten gesetzt
-          },
-          {
-            id: 'editor',
-            title: 'Editor',
-            closable: false,
-            canPin: false,
-            hideHeader: true,
-            contentPadding: 0,
-            content: (
-              <BlocklyEditor theme={theme} automationId={selectedAutomationId} />
-            ),
-          },
-          {
-            id: 'output',
-            title: 'Output',
-            closable: true,
-            position: 'bottom',
-            size: 200,
-            resizable: true,
-            pinned: true,
-            content: (
-              <div style={{ fontFamily: 'monospace', fontSize: '12px' }}>
-                <div>✅ Anwendung gestartet</div>
-                <div>📦 Dependencies geladen</div>
-                <div>🚀 React Docking Layout bereit</div>
-              </div>
-            ),
-          },
-          {
-            id: 'terminal',
-            title: 'Terminal',
-            closable: true,
-            position: 'bottom',
-            size: 200,
-            resizable: true,
-            pinned: false,
-            contentPadding: 8, // Weniger Padding für Terminal
-            content: (
-              <div style={{ fontFamily: 'monospace', fontSize: '12px' }}>
-                <div>user@host:~$ echo Hallo Welt</div>
-                <div>Hallo Welt</div>
-              </div>
-            ),
-          },
-        ],
-      },
-      {
-        id: 'right',
-        width: 260,
-        panels: [
-          {
-            id: 'outline',
-            title: 'Outline',
-            closable: true,
-            pinned: true,
-            contentPadding: 16, // Mehr Padding für Outline
-            content: (
-              <div>
-                <h3>Outline</h3>
-                <ul>
-                  <li>Section 1</li>
-                  <li>Section 2</li>
-                  <li>Section 3</li>
-                </ul>
-              </div>
-            ),
-          },
-          {
-            id: 'problems',
-            title: 'Problems',
-            closable: true,
-            pinned: true,
-            content: (
-              <div>
-                <h3>Problems</h3>
-                <div style={{ color: '#ff6b6b' }}>❌ 2 Fehler gefunden</div>
-                <div style={{ color: '#ff6b6b' }}>⚠️ 1 Warnung</div>
-              </div>
-            ),
-          },
-        ],
-      },
-    ],
-    closedPanels,
-    theme,
-  });
-
-  const closablePanels = allPanels;
-  layoutConfig.columns[1].panels[0].content = (
-    <Toolbar
-      closablePanels={closablePanels}
-      closedPanels={closedPanels}
-      setClosedPanels={setClosedPanels}
-      folders={toolbarData.folders}
-      currentFolderId={toolbarData.currentFolderId || ''}
-      onChangeFolder={toolbarData.moveAutomationToFolder}
-      currentAutomationName={toolbarData.currentAutomationName}
-      currentAutomationStatus={toolbarData.currentAutomationStatus}
-      onSave={() => blocklyEditorRef.current?.handleSave()}
-    />
+  const layoutConfig: DockingLayoutConfig = useMemo(
+    () => ({
+      columns: [
+        {
+          id: 'left',
+          width: 300,
+          panels: [
+            {
+              id: 'explorer',
+              title: 'Explorer',
+              closable: false,
+              pinned: true,
+              hideHeader: true,
+              content: (
+                <Sidebar
+                  onSelectionChange={(data) => {
+                    setToolbarData({
+                      folders: data.folders,
+                      currentFolderId: data.currentFolderId,
+                      currentAutomationName: data.currentAutomationName,
+                      currentAutomationId: data.currentAutomationId,
+                      currentAutomationStatus: data.currentAutomationStatus,
+                      moveAutomationToFolder: data.moveAutomationToFolder,
+                    });
+                    setSelectedAutomationId(data.currentAutomationId);
+                  }}
+                />
+              ),
+            },
+          ],
+        },
+        {
+          id: 'center',
+          panels: [
+            {
+              id: 'toolbar',
+              title: 'Toolbar',
+              closable: false,
+              canPin: false,
+              hideHeader: true,
+              resizable: false,
+              size: 100,
+              content: (
+                <Toolbar
+                  closablePanels={[{ id: 'yaml', title: 'YAML' }]}
+                  closedPanels={closedPanels}
+                  setClosedPanels={setClosedPanels}
+                  folders={toolbarData.folders}
+                  currentFolderId={toolbarData.currentFolderId || ''}
+                  onChangeFolder={toolbarData.moveAutomationToFolder}
+                  currentAutomationName={toolbarData.currentAutomationName}
+                  currentAutomationStatus={toolbarData.currentAutomationStatus}
+                  onSave={() => blocklyEditorRef.current?.handleSave()}
+                  onCheckBlocks={() => blocklyEditorRef.current?.checkBlocks()}
+                  onShowCode={() => {
+                    blocklyEditorRef.current?.showCode();
+                    setClosedPanels((prev) => prev.filter((id) => id !== 'yaml'));
+                  }}
+                />
+              ),
+            },
+            {
+              id: 'editor',
+              title: 'Editor',
+              closable: false,
+              canPin: false,
+              hideHeader: true,
+              contentPadding: 0,
+              content: (
+                <BlocklyEditor
+                  ref={blocklyEditorRef}
+                  theme={theme}
+                  automationId={selectedAutomationId}
+                  automationName={toolbarData.currentAutomationName}
+                  onYamlChange={setYamlPreview}
+                />
+              ),
+            },
+            {
+              id: 'yaml',
+              title: 'YAML',
+              closable: true,
+              position: 'bottom',
+              size: 220,
+              resizable: true,
+              pinned: true,
+              contentPadding: 0,
+              content: (
+                <pre className="yaml-preview">
+                  {yamlPreview || '# Wähle eine Automatisierung und setze Blöcke.'}
+                </pre>
+              ),
+            },
+          ],
+        },
+      ],
+      closedPanels,
+      theme,
+    }),
+    [closedPanels, selectedAutomationId, theme, toolbarData, yamlPreview],
   );
 
-  layoutConfig.columns[1].panels[1].content = (
-    <BlocklyEditor ref={blocklyEditorRef} theme={theme} automationId={selectedAutomationId} />
-  );
-
-  const handleLayoutChange = (newConfig: DockingLayoutConfig) => {
-    setLayoutConfig(newConfig);
-  };
-
-  const handlePanelClose = (panelId: string) => {
-    setClosedPanels(prev => prev.includes(panelId) ? prev : [...prev, panelId]);
-  };
-
-  React.useEffect(() => {
+  useEffect(() => {
     const root = document.body;
     root.classList.remove('theme-light', 'theme-dark');
     if (theme === 'auto') {
       const mq = window.matchMedia('(prefers-color-scheme: dark)');
       root.classList.add(mq.matches ? 'theme-dark' : 'theme-light');
-    } else {
-      root.classList.add(`theme-${theme}`);
+      const onChange = (event: MediaQueryListEvent) => {
+        root.classList.remove('theme-light', 'theme-dark');
+        root.classList.add(event.matches ? 'theme-dark' : 'theme-light');
+      };
+      mq.addEventListener('change', onChange);
+      return () => mq.removeEventListener('change', onChange);
     }
+    root.classList.add(`theme-${theme}`);
+    return undefined;
   }, [theme]);
 
   return (
     <DockingLayout
       config={layoutConfig}
-      onLayoutChange={handleLayoutChange}
-      onPanelClose={handlePanelClose}
+      onPanelClose={(panelId: string) => {
+        setClosedPanels((prev) => (prev.includes(panelId) ? prev : [...prev, panelId]));
+      }}
       closedPanels={closedPanels}
       style={{
         height: '100vh',

@@ -1,22 +1,22 @@
-import { registerTriggerBlocks } from './trigger';
-import { registerConditionBlocks } from './conditions';
-import { registerActionBlocks } from './actions';
-import { registerGeraeteBlocks } from './geraete';
-import { registerServiceBlocks } from './services';
-import { registerNotificationBlocks } from './notifications';
-import { registerTimeBlocks } from './time';
-import { registerVariableBlocks } from './variables';
-import { registerLogicBlocks } from './logic';
+import * as Blockly from 'blockly';
 import { EntityField } from './EntityField';
+import { HA_BLOCK_DEFINITIONS } from './definitions';
 
-export function registerAllHomeAssistantBlocks() {
-  registerTriggerBlocks();
-  registerConditionBlocks();
-  registerActionBlocks();
-  registerGeraeteBlocks();
-  registerServiceBlocks();
-  registerNotificationBlocks();
-  registerTimeBlocks();
-  registerVariableBlocks();
-  registerLogicBlocks();
-} 
+let registered = false;
+
+export function registerAllHomeAssistantBlocks(): void {
+  if (registered) {
+    return;
+  }
+
+  try {
+    Blockly.fieldRegistry.register('field_entity', EntityField);
+  } catch {
+    // Field ist bereits registriert (Hot-Reload / Tests)
+  }
+
+  Blockly.common.defineBlocksWithJsonArray(HA_BLOCK_DEFINITIONS as Parameters<typeof Blockly.common.defineBlocksWithJsonArray>[0]);
+  registered = true;
+}
+
+export { EntityField };

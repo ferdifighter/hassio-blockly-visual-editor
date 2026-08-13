@@ -1,0 +1,5 @@
+rootfs/backend/node_modules
+rootfs/frontend/node_modules
+rootfs/frontend/build
+rootfs/frontend/coverage
+**/.DS_Store

@@ -1,206 +1,176 @@
 import * as Blockly from 'blockly';
+import { getApiUrl } from '../../../api';
 
-// Benutzerdefiniertes Field für Entity-Auswahl
-class EntityField extends Blockly.FieldTextInput {
-  constructor(value?: string, validator?: Blockly.FieldValidator<string>) {
-    super(value, validator);
-    this.SERIALIZABLE = true;
+export interface HaEntity {
+  entity_id: string;
+  state: string;
+  friendly_name: string;
+  domain: string;
+  device_class?: string | null;
+  unit_of_measurement?: string | null;
+}
+
+let entityCache: { at: number; entities: HaEntity[] } | null = null;
+const CACHE_MS = 30_000;
+
+async function loadEntities(): Promise<HaEntity[]> {
+  if (entityCache && Date.now() - entityCache.at < CACHE_MS) {
+    return entityCache.entities;
+  }
+  const res = await fetch(getApiUrl('api/entities'));
+  if (!res.ok) {
+    throw new Error(`Entitäten konnten nicht geladen werden (HTTP ${res.status})`);
+  }
+  const entities = (await res.json()) as HaEntity[];
+  entityCache = { at: Date.now(), entities };
+  return entities;
+}
+
+export class EntityField extends Blockly.FieldTextInput {
+  static SERIALIZABLE = true;
+
+  private domainFilter?: string;
+
+  static override fromJson(options: Record<string, unknown>): EntityField {
+    const value = typeof options['value'] === 'string' ? options['value'] : '';
+    const domain = typeof options['domain'] === 'string' ? options['domain'] : undefined;
+    return new EntityField(value, undefined, domain);
   }
 
-  // Click-Handler überschreiben
-  onMouseDown_(e: Event) {
-    e.stopPropagation();
-    this.showEntitySelector_();
+  constructor(
+    value?: string,
+    validator?: Blockly.FieldValidator<string>,
+    domain?: string,
+  ) {
+    super(value ?? '', validator);
+    this.domainFilter = domain;
   }
 
-  // Serialisierung überschreiben
-  toXml(fieldElement: Element) {
-    fieldElement.textContent = this.value_;
-    return fieldElement;
+  protected override showEditor_(_e?: Event, _quietInput?: boolean): void {
+    this.showEntitySelector();
   }
 
-  // Deserialisierung überschreiben
-  fromXml(fieldElement: Element) {
-    this.setValue(fieldElement.textContent || '');
-  }
-
-  // Wert setzen mit Event-Fire
-  setValue(newValue: string) {
-    if (newValue === this.value_) {
-      return;
-    }
-    
-    if (this.sourceBlock_ && Blockly.Events.isEnabled()) {
-      Blockly.Events.fire(new Blockly.Events.BlockChange(
-        this.sourceBlock_, 'field', this.name, this.value_, newValue
-      ));
-    }
-    
-    // Parent-Methode aufrufen für korrekte Aktualisierung
-    super.setValue(newValue);
-  }
-
-  // Entity-Selector anzeigen
-  showEntitySelector_() {
-    // Einfaches Popup mit Entitäten-Liste
-    const container = document.createElement('div');
-    container.style.cssText = `
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100vw;
-      height: 100vh;
-      background: rgba(0, 0, 0, 0.7);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      z-index: 10000;
-    `;
+  private showEntitySelector(): void {
+    const overlay = document.createElement('div');
+    overlay.className = 'entity-selector-overlay';
+    overlay.addEventListener('click', (event) => {
+      if (event.target === overlay) {
+        overlay.remove();
+      }
+    });
 
     const modal = document.createElement('div');
-    modal.style.cssText = `
-      background: #222;
-      border-radius: 8px;
-      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.8);
-      width: 90vw;
-      max-width: 800px;
-      height: 80vh;
-      display: flex;
-      flex-direction: column;
-      overflow: hidden;
-    `;
+    modal.className = 'entity-selector-modal';
 
     const header = document.createElement('div');
-    header.style.cssText = `
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 16px 24px;
-      border-bottom: 1px solid #333;
-      background: #2a2a2a;
-    `;
-    header.innerHTML = `
-      <h3 style="margin: 0; color: #fff; font-size: 18px;">Entität auswählen</h3>
-      <button style="background: none; border: none; color: #aaa; font-size: 24px; cursor: pointer;" onclick="this.closest('.entity-selector-overlay').remove()">×</button>
-    `;
+    header.className = 'entity-selector-header';
+    header.innerHTML = '<h3>Entität auswählen</h3>';
+    const closeBtn = document.createElement('button');
+    closeBtn.type = 'button';
+    closeBtn.className = 'entity-selector-close';
+    closeBtn.setAttribute('aria-label', 'Schließen');
+    closeBtn.textContent = '×';
+    closeBtn.addEventListener('click', () => overlay.remove());
+    header.appendChild(closeBtn);
 
-    const searchDiv = document.createElement('div');
-    searchDiv.style.cssText = `
-      padding: 16px 24px;
-      border-bottom: 1px solid #333;
-      background: #2a2a2a;
-    `;
-    
+    const searchWrap = document.createElement('div');
+    searchWrap.className = 'entity-selector-search';
     const searchInput = document.createElement('input');
-    searchInput.type = 'text';
-    searchInput.placeholder = 'Entität suchen...';
-    searchInput.style.cssText = `
-      width: 100%;
-      padding: 8px 12px;
-      background: #333;
-      border: 1px solid #555;
-      border-radius: 4px;
-      color: #fff;
-      font-size: 14px;
-      outline: none;
-    `;
+    searchInput.type = 'search';
+    searchInput.placeholder = 'Entität suchen…';
+    searchWrap.appendChild(searchInput);
 
     const content = document.createElement('div');
-    content.style.cssText = `
-      flex: 1;
-      overflow: auto;
-      padding: 16px;
-    `;
+    content.className = 'entity-selector-content';
+    content.textContent = 'Lade Entitäten…';
 
+    modal.appendChild(header);
+    modal.appendChild(searchWrap);
+    modal.appendChild(content);
+    overlay.appendChild(modal);
+    document.body.appendChild(overlay);
+    searchInput.focus();
+
+    loadEntities()
+      .then((entities) => {
+        const filtered = this.domainFilter
+          ? entities.filter((entity) => entity.domain === this.domainFilter)
+          : entities;
+        this.renderEntityTable(content, filtered, searchInput, overlay);
+      })
+      .catch((error: Error) => {
+        content.innerHTML = `<div class="entity-selector-error">${error.message}</div>`;
+      });
+  }
+
+  private renderEntityTable(
+    content: HTMLElement,
+    entities: HaEntity[],
+    searchInput: HTMLInputElement,
+    overlay: HTMLElement,
+  ): void {
+    content.innerHTML = '';
     const table = document.createElement('table');
-    table.style.cssText = `
-      width: 100%;
-      border-collapse: collapse;
-      font-size: 14px;
+    table.className = 'entity-selector-table';
+    table.innerHTML = `
+      <thead>
+        <tr>
+          <th>Entität</th>
+          <th>Name</th>
+          <th>Status</th>
+        </tr>
+      </thead>
     `;
-
-    // Header der Tabelle
-    const thead = document.createElement('thead');
-    thead.innerHTML = `
-      <tr style="background: #2a2a2a;">
-        <th style="padding: 12px 16px; text-align: left; color: #fff; border-bottom: 1px solid #333;">Entität</th>
-        <th style="padding: 12px 16px; text-align: left; color: #fff; border-bottom: 1px solid #333;">Name</th>
-        <th style="padding: 12px 16px; text-align: left; color: #fff; border-bottom: 1px solid #333;">Status</th>
-      </tr>
-    `;
-
     const tbody = document.createElement('tbody');
 
-    // Entitäten laden
-    const getApiUrl = (endpoint: string) => {
-      if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-        return `http://localhost:8099/${endpoint.replace(/^\//, '')}`;
+    const renderRows = (list: HaEntity[]) => {
+      tbody.replaceChildren();
+      if (list.length === 0) {
+        const empty = document.createElement('tr');
+        empty.innerHTML = '<td colspan="3">Keine Entitäten gefunden.</td>';
+        tbody.appendChild(empty);
+        return;
       }
-      const base = window.location.pathname.endsWith('/') ? window.location.pathname : window.location.pathname + '/';
-      return `${window.location.protocol}//${window.location.host}${base}${endpoint.replace(/^\//, '')}`;
+      for (const entity of list) {
+        const row = document.createElement('tr');
+        const unit = entity.unit_of_measurement ? ` ${entity.unit_of_measurement}` : '';
+        row.innerHTML = `
+          <td class="entity-id">${escapeHtml(entity.entity_id)}</td>
+          <td>${escapeHtml(entity.friendly_name)}</td>
+          <td>${escapeHtml(entity.state)}${escapeHtml(unit)}</td>
+        `;
+        row.addEventListener('click', () => {
+          this.setValue(entity.entity_id);
+          overlay.remove();
+        });
+        tbody.appendChild(row);
+      }
     };
 
-    fetch(getApiUrl('api/entities'))
-      .then(res => res.json())
-      .then(entities => {
-        entities.forEach((entity: any) => {
-          const row = document.createElement('tr');
-          row.style.cssText = `
-            cursor: pointer;
-            transition: background-color 0.2s;
-            border-bottom: 1px solid #333;
-          `;
-          row.onmouseover = () => row.style.background = '#2a4155';
-          row.onmouseout = () => row.style.background = '';
-          row.onclick = () => {
-            this.setValue(entity.entity_id);
-            container.remove();
-          };
-
-          row.innerHTML = `
-            <td style="padding: 12px 16px; color: #4ecdc4; font-family: monospace;">${entity.entity_id}</td>
-            <td style="padding: 12px 16px; color: #ccc;">${entity.friendly_name}</td>
-            <td style="padding: 12px 16px; color: #ccc;">${entity.state}${entity.unit_of_measurement ? ' ' + entity.unit_of_measurement : ''}</td>
-          `;
-
-          tbody.appendChild(row);
-        });
-
-        // Suchfunktion
-        searchInput.oninput = () => {
-          const searchTerm = searchInput.value.toLowerCase();
-          Array.from(tbody.children).forEach((row: any) => {
-            const entityId = row.children[0].textContent.toLowerCase();
-            const friendlyName = row.children[1].textContent.toLowerCase();
-            const state = row.children[2].textContent.toLowerCase();
-            
-            if (entityId.includes(searchTerm) || friendlyName.includes(searchTerm) || state.includes(searchTerm)) {
-              row.style.display = '';
-            } else {
-              row.style.display = 'none';
-            }
-          });
-        };
-      })
-      .catch(err => {
-        content.innerHTML = `<div style="color: #e74c3c; text-align: center; padding: 20px;">Fehler beim Laden der Entitäten: ${err.message}</div>`;
-      });
-
-    table.appendChild(thead);
+    renderRows(entities);
     table.appendChild(tbody);
     content.appendChild(table);
 
-    searchDiv.appendChild(searchInput);
-    modal.appendChild(header);
-    modal.appendChild(searchDiv);
-    modal.appendChild(content);
-    container.appendChild(modal);
-    container.className = 'entity-selector-overlay';
-    document.body.appendChild(container);
+    searchInput.addEventListener('input', () => {
+      const term = searchInput.value.toLowerCase().trim();
+      const matches = !term
+        ? entities
+        : entities.filter((entity) =>
+            [entity.entity_id, entity.friendly_name, entity.state, entity.domain]
+              .join(' ')
+              .toLowerCase()
+              .includes(term),
+          );
+      renderRows(matches);
+    });
   }
 }
 
-// Registriere das Field bei Blockly
-Blockly.fieldRegistry.register('field_entity', EntityField);
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
 
-export { EntityField }; 

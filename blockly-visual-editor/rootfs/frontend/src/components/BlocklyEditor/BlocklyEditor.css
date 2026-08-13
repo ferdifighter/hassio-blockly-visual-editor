@@ -1,0 +1,166 @@
+.blockly-editor {
+  display: flex;
+  flex: 1;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  position: relative;
+}
+
+.blockly-editor-host {
+  height: 100%;
+  width: 100%;
+  min-height: 0;
+}
+
+.blockly-editor-placeholder,
+.blockly-editor-loading {
+  position: absolute;
+  inset: 0;
+  color: #888;
+  text-align: center;
+  padding: 32px;
+  z-index: 5;
+  background: inherit;
+}
+
+.blockly-editor-status {
+  position: absolute;
+  right: 16px;
+  bottom: 16px;
+  z-index: 20;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 13px;
+  background: rgba(30, 30, 30, 0.9);
+  color: #fff;
+  pointer-events: none;
+}
+
+.blockly-editor-status.error {
+  background: rgba(180, 40, 40, 0.95);
+}
+
+.blockly-editor-status.success {
+  background: rgba(30, 120, 80, 0.95);
+}
+
+.entity-selector-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+}
+
+.entity-selector-modal {
+  background: #222;
+  border-radius: 8px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.8);
+  width: 90vw;
+  max-width: 800px;
+  height: 80vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  color: #fff;
+}
+
+.entity-selector-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 24px;
+  border-bottom: 1px solid #333;
+  background: #2a2a2a;
+}
+
+.entity-selector-header h3 {
+  margin: 0;
+  font-size: 18px;
+}
+
+.entity-selector-close {
+  background: none;
+  border: none;
+  color: #aaa;
+  font-size: 24px;
+  cursor: pointer;
+}
+
+.entity-selector-search {
+  padding: 16px 24px;
+  border-bottom: 1px solid #333;
+  background: #2a2a2a;
+}
+
+.entity-selector-search input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 8px 12px;
+  background: #333;
+  border: 1px solid #555;
+  border-radius: 4px;
+  color: #fff;
+  font-size: 14px;
+  outline: none;
+}
+
+.entity-selector-content {
+  flex: 1;
+  overflow: auto;
+  padding: 16px;
+}
+
+.entity-selector-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.entity-selector-table th {
+  padding: 12px 16px;
+  text-align: left;
+  color: #fff;
+  border-bottom: 1px solid #333;
+  background: #2a2a2a;
+}
+
+.entity-selector-table td {
+  padding: 12px 16px;
+  color: #ccc;
+  border-bottom: 1px solid #333;
+}
+
+.entity-selector-table .entity-id {
+  color: #4ecdc4;
+  font-family: monospace;
+}
+
+.entity-selector-table tbody tr {
+  cursor: pointer;
+}
+
+.entity-selector-table tbody tr:hover {
+  background: #2a4155;
+}
+
+.entity-selector-error {
+  color: #e74c3c;
+  text-align: center;
+  padding: 20px;
+}
+
+.yaml-preview {
+  margin: 0;
+  padding: 16px;
+  height: 100%;
+  overflow: auto;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 12px;
+  white-space: pre;
+  background: transparent;
+  color: inherit;
+}
