@@ -239,8 +239,8 @@ export const HA_BLOCK_DEFINITIONS: Array<Record<string, unknown>> = [
   },
   {
     type: 'ha_notify',
-    message0: 'Benachrichtigung senden über %1',
-    args0: [{ type: 'field_input', name: 'NOTIFY_SERVICE', text: 'notify.mobile_app_iphone' }],
+    message0: 'Benachrichtigung senden an %1',
+    args0: [{ type: 'field_notify_target', name: 'NOTIFY_SERVICE', value: '' }],
     message1: 'Nachricht %1',
     args1: [{ type: 'field_input', name: 'MESSAGE', text: 'Tür wurde geöffnet!' }],
     message2: 'Titel (optional) %1',
@@ -248,7 +248,7 @@ export const HA_BLOCK_DEFINITIONS: Array<Record<string, unknown>> = [
     previousStatement: 'Action',
     nextStatement: 'Action',
     colour: 160,
-    tooltip: 'Sendet eine Benachrichtigung.',
+    tooltip: 'Sendet eine Push-Nachricht an ein Smartphone mit Home Assistant Companion App.',
   },
   {
     type: 'ha_delay',
@@ -368,11 +368,14 @@ export const HA_BLOCK_DEFINITIONS: Array<Record<string, unknown>> = [
   },
   {
     type: 'ha_send_push',
-    message0: 'Sende Push-Nachricht %1',
-    args0: [{ type: 'field_input', name: 'MESSAGE', text: 'Alarm ausgelöst!' }],
+    message0: 'Push an %1: %2',
+    args0: [
+      { type: 'field_notify_target', name: 'NOTIFY_SERVICE', value: '' },
+      { type: 'field_input', name: 'MESSAGE', text: 'Alarm ausgelöst!' },
+    ],
     previousStatement: 'Action',
     nextStatement: 'Action',
     colour: 290,
-    tooltip: 'Sendet eine Standard-Push-Nachricht über notify.notify.',
+    tooltip: 'Sendet eine Push-Nachricht an ein Smartphone mit Companion App.',
   },
 ];

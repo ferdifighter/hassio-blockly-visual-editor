@@ -700,6 +700,89 @@ app.get('/api/entities', async (req, res) => {
   }
 });
 
+function slugifyNotifyName(value) {
+  return String(value || '')
+    .toLowerCase()
+    .replace(/ä/g, 'ae')
+    .replace(/ö/g, 'oe')
+    .replace(/ü/g, 'ue')
+    .replace(/ß/g, 'ss')
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '');
+}
+
+function titleFromService(serviceName) {
+  return serviceName
+    .replace(/^mobile_app_/, '')
+    .replace(/_/g, ' ')
+    .replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
+// Companion-App-Smartphones und zugeordnete Personen
+app.get('/api/notify-targets', async (req, res) => {
+  const { HA_TOKEN, HA_URL } = getHACredentials();
+  if (!HA_URL) {
+    return res.status(500).json({ error: 'Home Assistant URL nicht verfügbar' });
+  }
+
+  try {
+    const axiosConfig = {};
+    if (HA_TOKEN) axiosConfig.headers = { Authorization: `Bearer ${HA_TOKEN}` };
+
+    const [statesResult, servicesResult] = await Promise.all([
+      axios.get(`${HA_URL}/api/states`, axiosConfig),
+      axios.get(`${HA_URL}/api/services`, axiosConfig)
+    ]);
+
+    const states = Array.isArray(statesResult.data) ? statesResult.data : [];
+    const persons = states.filter((entity) => entity.entity_id.startsWith('person.'));
+    const trackers = states.filter((entity) => entity.entity_id.startsWith('device_tracker.'));
+
+    const notifyDomain = (servicesResult.data || []).find((entry) => entry.domain === 'notify');
+    const services = notifyDomain?.services || {};
+    const mobileServices = Object.entries(services)
+      .filter(([name]) => name.startsWith('mobile_app_'))
+      .map(([name, meta]) => ({
+        serviceName: name,
+        service: `notify.${name}`,
+        name: (meta && meta.name) || titleFromService(name)
+      }));
+
+    const targets = mobileServices.map((svc) => {
+      const objectId = svc.serviceName.replace(/^mobile_app_/, '');
+      const trackerId = `device_tracker.${objectId}`;
+      const tracker = trackers.find((item) => item.entity_id === trackerId)
+        || trackers.find((item) => slugifyNotifyName(item.attributes?.friendly_name) === objectId)
+        || trackers.find((item) => item.entity_id.replace('device_tracker.', '').includes(objectId));
+
+      const person = persons.find((item) => {
+        const deviceTrackers = item.attributes?.device_trackers || [];
+        if (tracker && deviceTrackers.includes(tracker.entity_id)) {
+          return true;
+        }
+        return deviceTrackers.some((id) => id.replace('device_tracker.', '') === objectId);
+      });
+
+      const deviceName = tracker?.attributes?.friendly_name || svc.name;
+      const personName = person?.attributes?.friendly_name || null;
+
+      return {
+        service: svc.service,
+        device_name: deviceName,
+        person_id: person?.entity_id || null,
+        person_name: personName,
+        label: personName ? `${personName} · ${deviceName}` : deviceName
+      };
+    });
+
+    targets.sort((a, b) => a.label.localeCompare(b.label, 'de'));
+    res.json(targets);
+  } catch (e) {
+    console.error('Fehler beim Abrufen der Companion-Geräte:', e.response?.data || e.message);
+    res.status(500).json({ error: e.response?.data || e.message });
+  }
+});
+
 app.use('/', express.static(path.join(__dirname, '../frontend/build')));
 
 // 4. SPA-Catch-All (ganz am Ende!)

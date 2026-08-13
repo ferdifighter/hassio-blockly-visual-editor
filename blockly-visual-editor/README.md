@@ -1,6 +1,6 @@
 # Home Assistant Add-on: Blockly Visual Editor
 
-**Aktuelle Version: 0.3.1**
+**Aktuelle Version: 0.3.2**
 
 Visueller Editor für Home-Assistant-Automatisierungen auf Basis von [Google Blockly](https://developers.google.com/blockly).
 

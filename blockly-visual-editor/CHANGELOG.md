@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.3.2
+
+- Benachrichtigungen gehen an Smartphones mit Home Assistant Companion App
+- Im Block „Benachrichtigung senden“ können Person und Gerät ausgewählt werden
+
 ## 0.3.1
 
 - Editor-Layout wie bei ioBroker: Scriptbaum links, Blockly-Workspace nutzt die volle Restbreite

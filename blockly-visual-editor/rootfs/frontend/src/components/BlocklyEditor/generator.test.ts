@@ -64,6 +64,22 @@ describe('Home Assistant Blockly-Generator', () => {
     workspace.dispose();
   });
 
+  it('erzeugt eine Companion-App-Benachrichtigung', () => {
+    const workspace = new Blockly.Workspace();
+    const block = workspace.newBlock('ha_notify');
+    block.setFieldValue('notify.mobile_app_iphone', 'NOTIFY_SERVICE');
+    block.setFieldValue('Tür wurde geöffnet!', 'MESSAGE');
+    block.setFieldValue('Alarm', 'TITLE');
+    expect(blockToAction(block)).toEqual({
+      action: 'notify.mobile_app_iphone',
+      data: {
+        message: 'Tür wurde geöffnet!',
+        title: 'Alarm',
+      },
+    });
+    workspace.dispose();
+  });
+
   it('serialisiert verschachtelte Objekte als YAML', () => {
     expect(toYaml({ triggers: [{ trigger: 'time', at: '07:00' }] })).toContain('- trigger: time');
   });

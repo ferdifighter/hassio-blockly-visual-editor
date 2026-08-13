@@ -307,11 +307,14 @@ export function blockToAction(block: Blockly.Block): JsonObject | null {
           [field(block, 'NAME') || field(block, 'VARIABLE_NAME') || 'var']: field(block, 'VALUE'),
         },
       };
-    case 'ha_send_push':
+    case 'ha_send_push': {
+      const raw = field(block, 'NOTIFY_SERVICE') || 'notify.notify';
+      const action = raw.includes('.') ? raw : `notify.${raw}`;
       return {
-        action: 'notify.notify',
+        action,
         data: { message: field(block, 'MESSAGE') },
       };
+    }
     default:
       return null;
   }
