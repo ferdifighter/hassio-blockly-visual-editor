@@ -753,16 +753,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onSelectionChange }) => {
 
   return (
     <DndProvider backend={HTML5Backend}>
-      <aside className="sidebar" style={{
-        height: '100%',
-        width: '100%',
-        background: '#222',
-        color: '#fff',
-        padding: 0,
-        boxSizing: 'border-box',
-        display: 'flex',
-        flexDirection: 'column'
-      }}>
+      <aside className="sidebar">
         <div className="sidebar-toolbar" style={{ display: 'flex', gap: 8, padding: 12, borderBottom: '1px solid #333' }}>
           <button title="Neuer Ordner" style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer' }} onClick={handleNewFolder}><FaFolderPlusIcon /></button>
                           <button title="Neue Automatisierung" style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer' }} onClick={handleNewAutomation}><FaFileIcon /></button>

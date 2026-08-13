@@ -52,6 +52,7 @@ const BlocklyEditor = forwardRef<BlocklyEditorHandle, BlocklyEditorProps>(
   ({ theme, automationId, automationName, onYamlChange, onStatus }, ref) => {
     const blocklyDiv = useRef<HTMLDivElement>(null);
     const workspaceRef = useRef<Blockly.WorkspaceSvg | null>(null);
+    const [workspaceReady, setWorkspaceReady] = useState(false);
     const [status, setStatus] = useState<{ message: string; kind: 'info' | 'success' | 'error' } | null>(null);
     const [loading, setLoading] = useState(false);
 
@@ -92,52 +93,71 @@ const BlocklyEditor = forwardRef<BlocklyEditorHandle, BlocklyEditorProps>(
     }, [emitYaml]);
 
     useEffect(() => {
-      if (!blocklyDiv.current || workspaceRef.current) {
+      const host = blocklyDiv.current;
+      if (!host) {
         return undefined;
       }
 
-      const workspace = Blockly.inject(blocklyDiv.current, {
-        toolbox: HA_TOOLBOX,
-        theme: resolveBlocklyTheme(theme),
-        renderer: 'zelos',
-        grid: {
-          spacing: 20,
-          length: 3,
-          colour: '#555',
-          snap: true,
-        },
-        trashcan: true,
-        move: {
-          scrollbars: true,
-          drag: true,
-          wheel: true,
-        },
-        zoom: {
-          controls: true,
-          wheel: true,
-          startScale: 0.9,
-          maxScale: 3,
-          minScale: 0.3,
-          scaleSpeed: 1.2,
-        },
-        sounds: false,
-      });
-      workspaceRef.current = workspace;
-      Blockly.serialization.workspaces.load(emptyWorkspaceState(), workspace);
+      const resizeWorkspace = (workspace: Blockly.WorkspaceSvg) => {
+        Blockly.svgResize(workspace);
+      };
 
-      const changeListener = () => emitYaml();
-      workspace.addChangeListener(changeListener);
+      const injectIfNeeded = () => {
+        if (workspaceRef.current) {
+          resizeWorkspace(workspaceRef.current);
+          return;
+        }
+        if (host.clientWidth < 20 || host.clientHeight < 20) {
+          return;
+        }
 
-      const resize = () => Blockly.svgResize(workspace);
-      const observer = new ResizeObserver(resize);
-      observer.observe(blocklyDiv.current);
-      window.setTimeout(resize, 0);
+        const workspace = Blockly.inject(host, {
+          toolbox: HA_TOOLBOX,
+          theme: resolveBlocklyTheme(theme),
+          renderer: 'zelos',
+          media: './media/',
+          grid: {
+            spacing: 20,
+            length: 3,
+            colour: '#555',
+            snap: true,
+          },
+          trashcan: true,
+          move: {
+            scrollbars: true,
+            drag: true,
+            wheel: true,
+          },
+          zoom: {
+            controls: true,
+            wheel: true,
+            startScale: 0.9,
+            maxScale: 3,
+            minScale: 0.3,
+            scaleSpeed: 1.2,
+          },
+          sounds: false,
+        });
+        workspaceRef.current = workspace;
+        Blockly.serialization.workspaces.load(emptyWorkspaceState(), workspace);
+        workspace.addChangeListener(() => emitYaml());
+        resizeWorkspace(workspace);
+        setWorkspaceReady(true);
+      };
+
+      const observer = new ResizeObserver(() => injectIfNeeded());
+      observer.observe(host);
+      window.addEventListener('resize', injectIfNeeded);
+      injectIfNeeded();
 
       return () => {
-        workspace.removeChangeListener(changeListener);
+        window.removeEventListener('resize', injectIfNeeded);
         observer.disconnect();
-        workspace.dispose();
-        workspaceRef.current = null;
+        if (workspaceRef.current) {
+          workspaceRef.current.dispose();
+          workspaceRef.current = null;
+        }
+        setWorkspaceReady(false);
       };
       // Theme is applied separately so the workspace is not recreated.
       // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -152,7 +172,7 @@ const BlocklyEditor = forwardRef<BlocklyEditorHandle, BlocklyEditorProps>(
     }, [theme]);
 
     useEffect(() => {
-      if (!workspaceRef.current) {
+      if (!workspaceReady || !workspaceRef.current) {
         return;
       }
       if (!automationId) {
@@ -199,7 +219,7 @@ const BlocklyEditor = forwardRef<BlocklyEditorHandle, BlocklyEditorProps>(
       return () => {
         cancelled = true;
       };
-    }, [automationId, emitYaml, loadWorkspaceState, onYamlChange]);
+    }, [automationId, emitYaml, loadWorkspaceState, onYamlChange, workspaceReady]);
 
     const handleSave = useCallback(async () => {
       const workspace = workspaceRef.current;
@@ -266,20 +286,14 @@ const BlocklyEditor = forwardRef<BlocklyEditorHandle, BlocklyEditorProps>(
 
     useImperativeHandle(ref, () => ({ handleSave, showCode, checkBlocks }), [handleSave, showCode, checkBlocks]);
 
-    if (!automationId) {
-      onYamlChange?.('');
-    }
-
     return (
       <section className="blockly-editor">
         {!automationId && (
-          <div className="blockly-editor-placeholder">Keine Automatisierung ausgewählt</div>
+          <div className="blockly-editor-placeholder">
+            Wähle links eine Automatisierung oder lege eine neue an.
+          </div>
         )}
-        <div
-          ref={blocklyDiv}
-          className="blockly-editor-host"
-          style={{ visibility: automationId ? 'visible' : 'hidden' }}
-        />
+        <div ref={blocklyDiv} className="blockly-editor-host" />
         {loading && automationId && <div className="blockly-editor-loading">Lade Automatisierung…</div>}
         {status && <div className={`blockly-editor-status ${status.kind}`}>{status.message}</div>}
       </section>

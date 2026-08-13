@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.3.1
+
+- Editor-Layout wie bei ioBroker: Scriptbaum links, Blockly-Workspace nutzt die volle Restbreite
+- Docking-Layout entfernt, das den Editor zusammengedrückt und den Workspace leer gelassen hat
+- Blockly wird erst injiziert, wenn der Container eine echte Größe hat, und skaliert bei Resize mit
+
 ## 0.3.0
 
 - Blockly auf die aktuelle Google-API umgestellt (JSON-Serialisierung, JSON-Toolbox, JSON-Blöcke)
