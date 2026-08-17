@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.3.7
+
+- Löschen einer Automatisierung fragt nicht mehr nach „Ordner löschen“
+- Die Anzahl in einem Ordner überdeckt das Ordner-Icon nicht mehr, Aufklappen bleibt möglich
+
 ## 0.3.6
 
 - Oberfläche an Home Assistant angeglichen: klarere Flächen, abgerundete Panels, moderne Buttons

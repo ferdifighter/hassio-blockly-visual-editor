@@ -834,6 +834,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onSelectionChange }) => {
                 if (typeof element.name !== 'string') {
                   console.warn('TreeView nodeRenderer: Element ohne gültigen Namen:', element);
                 }
+                const itemCount = element.type === 'folder' ? countItemsInFolder(treeObj, element.id) : 0;
                 return (
                 <DraggableTreeNode element={element} onDropNode={handleDropNode}>
                   <div
@@ -848,31 +849,21 @@ const Sidebar: React.FC<SidebarProps> = ({ onSelectionChange }) => {
                     <div className="tree-row-main">
                       {element.type === 'folder'
                         ? (
-                            <div className="tree-folder">
+                            <button
+                              type="button"
+                              className="tree-folder"
+                              title={isExpanded ? 'Zuklappen' : 'Aufklappen'}
+                              onClick={(e: React.MouseEvent) => {
+                                e.stopPropagation();
+                                setExpandedIds(prev => prev.includes(element.id)
+                                  ? prev.filter(id => id !== element.id)
+                                  : [...prev, element.id]);
+                              }}
+                            >
                               {isExpanded
-                                ? <FaRegFolderOpenIcon color="#f7c873" className="icon" style={{ cursor: 'pointer' }} onClick={(e: React.MouseEvent) => {
-                                    e.stopPropagation();
-                                    setExpandedIds(prev => prev.filter(id => id !== element.id));
-                                  }} />
-                                : <FaRegFolderIcon color="#f7c873" className="icon" style={{ cursor: 'pointer' }} onClick={(e: React.MouseEvent) => {
-                                    e.stopPropagation();
-                                    setExpandedIds(prev => prev.includes(element.id) ? prev : [...prev, element.id]);
-                                  }} />
-                              }
-                              {(() => {
-                                if (element.type === 'folder' && editingId !== element.id) {
-                                  const count = countItemsInFolder(treeObj, element.id);
-                                  if (count > 0) {
-                                    return (
-                                      <div className="tree-badge">
-                                        {count > 99 ? '99+' : count}
-                                      </div>
-                                    );
-                                  }
-                                }
-                                return null;
-                              })()}
-                            </div>
+                                ? <FaRegFolderOpenIcon color="#f7c873" className="icon" />
+                                : <FaRegFolderIcon color="#f7c873" className="icon" />}
+                            </button>
                           )
                         : <FaFileIcon color="#8ecae6" className="icon" />}
                       {editingId === element.id ? (
@@ -902,7 +893,12 @@ const Sidebar: React.FC<SidebarProps> = ({ onSelectionChange }) => {
                           )}
                         </div>
                       ) : (
-                        <span>{element.name ?? ''}</span>
+                        <>
+                          <span>{element.name ?? ''}</span>
+                          {element.type === 'folder' && editingId !== element.id && itemCount > 0 && (
+                            <span className="tree-count">{itemCount}</span>
+                          )}
+                        </>
                       )}
                     </div>
                     {element.type === 'folder' && (
@@ -964,10 +960,21 @@ const Sidebar: React.FC<SidebarProps> = ({ onSelectionChange }) => {
           {deleteTarget && (
             <div className="confirm-overlay">
               <div className="confirm-modal">
-                <h3>Ordner löschen?</h3>
-                <p>
-                  Möchtest du den Ordner <b>{deleteTarget.name || 'Unbenannt'}</b> und alle Unterelemente wirklich löschen?
-                </p>
+                {deleteTarget.type === 'folder' ? (
+                  <>
+                    <h3>Ordner löschen?</h3>
+                    <p>
+                      Möchtest du den Ordner <b>{deleteTarget.name || 'Unbenannt'}</b> und alle Unterelemente wirklich löschen?
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <h3>Automatisierung löschen?</h3>
+                    <p>
+                      Möchtest du die Automatisierung <b>{deleteTarget.name || 'Unbenannt'}</b> wirklich löschen?
+                    </p>
+                  </>
+                )}
                 <div className="confirm-actions">
                   <button className="ghost" onClick={cancelDelete}>Abbrechen</button>
                   <button className="danger" onClick={confirmDelete}>Löschen</button>
