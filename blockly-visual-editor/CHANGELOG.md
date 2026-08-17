@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.3.9
+
+- Speichern, Blöcke prüfen und YAML stehen rechts in der Kopfzeile
+- Icon und Titel haben Abstand zum oberen Rand und zur Home-Assistant-Sidebar
+
 ## 0.3.8
 
 - Kopfzeile ist eine Zeile: App-Name und Automatisierung links, Aktionen rechts

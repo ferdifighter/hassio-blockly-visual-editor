@@ -46,7 +46,7 @@ const Toolbar: React.FC<ToolbarProps> = ({
   const displayName = currentAutomationName || 'Neue Automatisierung';
 
   return (
-    <div className="toolbar-blockly">
+    <>
       <div className="toolbar-left">
         <div className="toolbar-brand">
           <span className="toolbar-logo" aria-hidden="true">
@@ -98,7 +98,7 @@ const Toolbar: React.FC<ToolbarProps> = ({
           YAML
         </button>
       </div>
-    </div>
+    </>
   );
 };
 
