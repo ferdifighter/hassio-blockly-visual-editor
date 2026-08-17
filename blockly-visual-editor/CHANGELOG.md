@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.3.6
+
+- Oberfläche an Home Assistant angeglichen: klarere Flächen, abgerundete Panels, moderne Buttons
+- Sidebar mit Überschrift, besserer Suche und aufgeräumten Aktionen
+- Toolbar mit App-Kennzeichnung und Icons, Dialoge und Hinweise einheitlicher
+
 ## 0.3.5
 
 - Smartphone-Namen im Benachrichtigungsdialog werden nicht mehr verdoppelt

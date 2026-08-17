@@ -1,5 +1,11 @@
 import React, { useEffect, useState } from 'react';
+import { FaCode, FaFloppyDisk, FaListCheck, FaPuzzlePiece } from 'react-icons/fa6';
 import './Toolbar.css';
+
+const FaPuzzlePieceIcon = FaPuzzlePiece as React.ComponentType<{ size?: number }>;
+const FaFloppyDiskIcon = FaFloppyDisk as React.ComponentType<{ size?: number }>;
+const FaListCheckIcon = FaListCheck as React.ComponentType<{ size?: number }>;
+const FaCodeIcon = FaCode as React.ComponentType<{ size?: number }>;
 
 interface ToolbarProps {
   currentAutomationName?: string | null;
@@ -41,6 +47,15 @@ const Toolbar: React.FC<ToolbarProps> = ({
 
   return (
     <div className="toolbar-blockly">
+      <div className="toolbar-brand">
+        <span className="toolbar-logo" aria-hidden="true">
+          <FaPuzzlePieceIcon size={15} />
+        </span>
+        <span className="toolbar-brand-copy">
+          <span className="toolbar-brand-name">Blockly Editor</span>
+          <span className="toolbar-brand-sub">Home Assistant</span>
+        </span>
+      </div>
       <div className="toolbar-title">
         {hasAutomation ? (
           isEditingAutomationName ? (
@@ -56,7 +71,7 @@ const Toolbar: React.FC<ToolbarProps> = ({
               autoFocus
             />
           ) : (
-            <button type="button" className="toolbar-name" onClick={() => setIsEditingAutomationName(true)}>
+            <button type="button" className="toolbar-name" onClick={() => setIsEditingAutomationName(true)} title="Umbenennen">
               {displayName}
             </button>
           )
@@ -71,12 +86,15 @@ const Toolbar: React.FC<ToolbarProps> = ({
       </div>
       <div className="toolbar-actions">
         <button className="toolbar-btn primary" onClick={onSave} disabled={!hasAutomation}>
+          <FaFloppyDiskIcon size={13} />
           Speichern
         </button>
         <button className="toolbar-btn" onClick={onCheckBlocks} disabled={!hasAutomation}>
+          <FaListCheckIcon size={13} />
           Blöcke prüfen
         </button>
         <button className={`toolbar-btn ${yamlOpen ? 'active' : ''}`} onClick={onShowCode}>
+          <FaCodeIcon size={13} />
           YAML
         </button>
       </div>

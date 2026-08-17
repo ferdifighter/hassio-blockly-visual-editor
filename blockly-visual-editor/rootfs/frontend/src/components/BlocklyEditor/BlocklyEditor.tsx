@@ -318,7 +318,8 @@ const BlocklyEditor = forwardRef<BlocklyEditorHandle, BlocklyEditorProps>(
       <section className="blockly-editor">
         {!automationId && (
           <div className="blockly-editor-placeholder">
-            Wähle links eine Automatisierung oder lege eine neue an.
+            <strong>Keine Automatisierung ausgewählt</strong>
+            <span>Wähle links einen Eintrag oder lege mit dem Datei-Symbol eine neue Automatisierung an.</span>
           </div>
         )}
         <div ref={blocklyDiv} className="blockly-editor-host" />

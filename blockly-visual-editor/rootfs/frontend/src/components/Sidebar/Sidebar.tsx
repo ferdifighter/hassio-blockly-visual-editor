@@ -777,41 +777,29 @@ const Sidebar: React.FC<SidebarProps> = ({ onSelectionChange }) => {
   return (
     <DndProvider backend={HTML5Backend}>
       <aside className="sidebar">
-        <div className="sidebar-toolbar" style={{ display: 'flex', gap: 8, padding: 12, borderBottom: '1px solid #333' }}>
-          <button title="Neuer Ordner" style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer' }} onClick={handleNewFolder}><FaFolderPlusIcon /></button>
-                          <button title="Neue Automatisierung" style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer' }} onClick={handleNewAutomation}><FaFileIcon /></button>
-          <button title="Nach oben" style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer' }}><FaArrowUpIcon /></button>
-          <button title="Nach unten" style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer' }}><FaArrowDownIcon /></button>
+        <div className="sidebar-header">
+          <h2>Automatisierungen</h2>
+        </div>
+        <div className="sidebar-toolbar">
+          <button className="icon-btn" title="Neuer Ordner" onClick={handleNewFolder}><FaFolderPlusIcon /></button>
+          <button className="icon-btn" title="Neue Automatisierung" onClick={handleNewAutomation}><FaFileIcon /></button>
+          <button className="icon-btn" title="Nach oben"><FaArrowUpIcon /></button>
+          <button className="icon-btn" title="Nach unten"><FaArrowDownIcon /></button>
           <button
+            className="icon-btn"
             title={allExpanded ? 'Alle zuklappen' : 'Alle aufklappen'}
-            style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer' }}
             onClick={handleExpandCollapseAll}
           >
             {allExpanded ? <FaFolderClosedIcon /> : <FaFolderOpenIcon />}
           </button>
         </div>
-        
-        {/* Suchleiste */}
-        <div style={{ 
-          padding: '8px 12px', 
-          borderBottom: '1px solid #333',
-          background: '#2a2a2a'
-        }}>
+
+        <div className="sidebar-search">
           <input
-            type="text"
-            placeholder="Ordner und Skripte suchen..."
+            type="search"
+            placeholder="Suchen…"
             value={filterText}
             onChange={(e) => setFilterText(e.target.value)}
-            style={{
-              width: '100%',
-              padding: '6px 8px',
-              background: '#333',
-              color: '#fff',
-              border: '1px solid #555',
-              borderRadius: 4,
-              fontSize: '14px',
-              outline: 'none'
-            }}
             onKeyDown={(e) => {
               if (e.key === 'Escape') {
                 setFilterText('');
@@ -822,9 +810,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onSelectionChange }) => {
         
         <div 
           className="sidebar-tree" 
-          style={{ flex: 1, overflow: 'auto', padding: 12 }}
           onClick={(e) => {
-            // Wenn auf den Container selbst geklickt wird (nicht auf ein Element), Auswahl aufheben
             if (e.target === e.currentTarget) {
               setSelectedId(null);
             }
@@ -845,7 +831,6 @@ const Sidebar: React.FC<SidebarProps> = ({ onSelectionChange }) => {
               }}
               onNodeSelect={({ element }: any) => setSelectedId(element.id)}
               nodeRenderer={({ element, isBranch, isExpanded, getNodeProps, level }: any) => {
-                // Debug: Prüfe problematische Elemente
                 if (typeof element.name !== 'string') {
                   console.warn('TreeView nodeRenderer: Element ohne gültigen Namen:', element);
                 }
@@ -853,24 +838,17 @@ const Sidebar: React.FC<SidebarProps> = ({ onSelectionChange }) => {
                 <DraggableTreeNode element={element} onDropNode={handleDropNode}>
                   <div
                     {...getNodeProps({
-                      onClick: (e: any) => {
+                      onClick: () => {
                         setSelectedId(element.id);
                       }
                     })}
-                    style={{
-                      paddingLeft: 8 + 16 * (level - 1),
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 6,
-                      justifyContent: 'space-between',
-                      background: selectedId === element.id ? '#2a4155' : undefined,
-                      borderRadius: selectedId === element.id ? 4 : undefined,
-                    }}
+                    className={`tree-row ${selectedId === element.id ? 'is-selected' : ''}`}
+                    style={{ ['--level' as string]: level }}
                   >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <div className="tree-row-main">
                       {element.type === 'folder'
                         ? (
-                            <div style={{ position: 'relative' }}>
+                            <div className="tree-folder">
                               {isExpanded
                                 ? <FaRegFolderOpenIcon color="#f7c873" className="icon" style={{ cursor: 'pointer' }} onClick={(e: React.MouseEvent) => {
                                     e.stopPropagation();
@@ -881,30 +859,12 @@ const Sidebar: React.FC<SidebarProps> = ({ onSelectionChange }) => {
                                     setExpandedIds(prev => prev.includes(element.id) ? prev : [...prev, element.id]);
                                   }} />
                               }
-                              {/* Badge mit Anzahl der Elemente */}
                               {(() => {
-                                // Nur berechnen wenn es ein Ordner ist und nicht im Edit-Modus
                                 if (element.type === 'folder' && editingId !== element.id) {
                                   const count = countItemsInFolder(treeObj, element.id);
                                   if (count > 0) {
                                     return (
-                                      <div style={{
-                                        position: 'absolute',
-                                        top: -6,
-                                        right: -6,
-                                        background: '#e74c3c',
-                                        color: '#fff',
-                                        fontSize: '10px',
-                                        fontWeight: 'bold',
-                                        borderRadius: '50%',
-                                        width: '16px',
-                                        height: '16px',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        lineHeight: 1,
-                                        minWidth: '16px'
-                                      }}>
+                                      <div className="tree-badge">
                                         {count > 99 ? '99+' : count}
                                       </div>
                                     );
@@ -916,7 +876,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onSelectionChange }) => {
                           )
                         : <FaFileIcon color="#8ecae6" className="icon" />}
                       {editingId === element.id ? (
-                        <div style={{ display: 'flex', flexDirection: 'column' }}>
+                        <div className="tree-edit">
                           <input
                             ref={inputRef}
                             key={element.id}
@@ -933,22 +893,12 @@ const Sidebar: React.FC<SidebarProps> = ({ onSelectionChange }) => {
                               if (e?.key === 'Escape') cancelEdit();
                             }}
                             onMouseDown={e => e.stopPropagation()}
-                            style={{
-                              fontSize: 16,
-                              fontFamily: 'monospace',
-                              background: '#333',
-                              color: '#fff',
-                              border: '1px solid #555',
-                              borderRadius: 3,
-                              padding: '2px 6px',
-                              minWidth: 40
-                            }}
                           />
                           {entityIdPreview && (
-                            <span style={{ fontSize: 11, color: '#aaa', marginTop: 2 }}>entity_id: {entityIdPreview}</span>
+                            <span className="tree-hint">entity_id: {entityIdPreview}</span>
                           )}
                           {aliasWarning && (
-                            <span style={{ fontSize: 11, color: '#e74c3c', marginTop: 2 }}>{aliasWarning}</span>
+                            <span className="tree-hint error">{aliasWarning}</span>
                           )}
                         </div>
                       ) : (
@@ -956,49 +906,46 @@ const Sidebar: React.FC<SidebarProps> = ({ onSelectionChange }) => {
                       )}
                     </div>
                     {element.type === 'folder' && (
-                      <div style={{ display: 'flex', gap: 4 }}>
+                      <div className="tree-actions">
                         <button
+                          className="tree-action"
                           title="Umbenennen"
-                          style={{ background: 'none', border: 'none', color: '#aaa', cursor: 'pointer', padding: 2 }}
                           onClick={e => onRename(element, e)}
                         >
-                          <FaPenIcon size={14} />
+                          <FaPenIcon size={13} />
                         </button>
                         <button
+                          className="tree-action"
                           title="Löschen"
-                          style={{ background: 'none', border: 'none', color: '#aaa', cursor: 'pointer', padding: 2 }}
                           onClick={e => onDelete(element, e)}
                         >
-                          <FaTrashIcon size={14} />
+                          <FaTrashIcon size={13} />
                         </button>
                       </div>
                     )}
                     {element.type !== 'folder' && (
-                      <div style={{ display: 'flex', gap: 4 }}>
+                      <div className="tree-actions">
                         <button
-                          title={automationStatus[element.id] === 'on' ? 'Pause' : 'Starten'}
-                          style={{ background: 'none', border: 'none', color: automationStatus[element.id] === 'on' ? '#4ecdc4' : '#aaa', cursor: automationStatus[element.id] ? 'pointer' : 'not-allowed', padding: 2, opacity: automationStatus[element.id] ? 1 : 0.5 }}
+                          className={`tree-action ${automationStatus[element.id] === 'on' ? 'is-on' : ''}`}
+                          title={automationStatus[element.id] === 'on' ? 'Pause' : automationStatus[element.id] ? 'Starten' : 'Noch nicht gespeichert'}
                           onClick={e => automationStatus[element.id] ? onPlayPause(element, e) : undefined}
                           disabled={!automationStatus[element.id]}
                         >
-                          {automationStatus[element.id] === 'on' ? <FaPauseIcon size={14} /> : <FaPlayIcon size={14} />}
+                          {automationStatus[element.id] === 'on' ? <FaPauseIcon size={13} /> : <FaPlayIcon size={13} />}
                         </button>
-                        {!automationStatus[element.id] && (
-                          <span style={{ fontSize: 11, color: '#e74c3c', marginLeft: 2 }}>Nicht geladen</span>
-                        )}
                         <button
+                          className="tree-action"
                           title="Umbenennen"
-                          style={{ background: 'none', border: 'none', color: '#aaa', cursor: 'pointer', padding: 2 }}
                           onClick={e => onRename(element, e)}
                         >
-                          <FaPenIcon size={14} />
+                          <FaPenIcon size={13} />
                         </button>
                         <button
+                          className="tree-action"
                           title="Löschen"
-                          style={{ background: 'none', border: 'none', color: '#aaa', cursor: 'pointer', padding: 2 }}
                           onClick={e => onDelete(element, e)}
                         >
-                          <FaTrashIcon size={14} />
+                          <FaTrashIcon size={13} />
                         </button>
                       </div>
                     )}
@@ -1008,41 +955,22 @@ const Sidebar: React.FC<SidebarProps> = ({ onSelectionChange }) => {
               }}
             />
           ) : (
-            <div style={{ color: '#888', textAlign: 'center', padding: '20px' }}>
-              {filterText.trim() ? 'Keine Ergebnisse gefunden.' : 'Keine Automatisierungen gefunden oder Daten ungültig.'}
+            <div className="sidebar-empty">
+              {filterText.trim()
+                ? 'Keine Treffer.'
+                : 'Noch keine Automatisierung. Lege oben mit dem Datei-Symbol eine neue an.'}
             </div>
           )}
-          {/* Modal für Lösch-Bestätigung */}
           {deleteTarget && (
-            <div style={{
-              position: 'fixed',
-              top: 0,
-              left: 0,
-              width: '100vw',
-              height: '100vh',
-              background: 'rgba(0,0,0,0.5)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              zIndex: 9999
-            }}>
-              <div style={{
-                background: '#222',
-                color: '#fff',
-                padding: 32,
-                borderRadius: 8,
-                minWidth: 320,
-                boxShadow: '0 4px 24px #000a'
-              }}>
-                <div style={{ fontSize: 18, marginBottom: 16 }}>
-                  Ordner wirklich löschen?
-                </div>
-                <div style={{ marginBottom: 24 }}>
+            <div className="confirm-overlay">
+              <div className="confirm-modal">
+                <h3>Ordner löschen?</h3>
+                <p>
                   Möchtest du den Ordner <b>{deleteTarget.name || 'Unbenannt'}</b> und alle Unterelemente wirklich löschen?
-                </div>
-                <div style={{ display: 'flex', gap: 16, justifyContent: 'flex-end' }}>
-                  <button onClick={cancelDelete} style={{ padding: '6px 18px', background: '#444', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer' }}>Abbrechen</button>
-                  <button onClick={confirmDelete} style={{ padding: '6px 18px', background: '#e74c3c', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer' }}>Löschen</button>
+                </p>
+                <div className="confirm-actions">
+                  <button className="ghost" onClick={cancelDelete}>Abbrechen</button>
+                  <button className="danger" onClick={confirmDelete}>Löschen</button>
                 </div>
               </div>
             </div>

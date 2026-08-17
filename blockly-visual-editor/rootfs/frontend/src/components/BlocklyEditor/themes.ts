@@ -6,9 +6,10 @@ export const LightTheme = Blockly.Theme.defineTheme('ha-light', {
   base: Blockly.Themes.Classic,
   componentStyles: {
     workspaceBackgroundColour: '#f4f6fb',
-    toolboxBackgroundColour: '#eef1f6',
+    toolboxBackgroundColour: '#ffffff',
     flyoutBackgroundColour: '#ffffff',
     scrollbarColour: '#c5cdd8',
+    toolboxForegroundColour: '#3c4250',
   },
 });
 
@@ -16,10 +17,11 @@ export const HaDarkTheme = Blockly.Theme.defineTheme('ha-dark', {
   name: 'ha-dark',
   base: DarkTheme,
   componentStyles: {
-    workspaceBackgroundColour: '#1e1e1e',
-    toolboxBackgroundColour: '#252526',
-    flyoutBackgroundColour: '#2d2d2d',
-    scrollbarColour: '#5a5a5a',
+    workspaceBackgroundColour: '#141821',
+    toolboxBackgroundColour: '#1b1f29',
+    flyoutBackgroundColour: '#222733',
+    scrollbarColour: '#4a5163',
+    toolboxForegroundColour: '#d7dce6',
   },
 });
 

@@ -3,9 +3,45 @@
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  height: 48px;
-  padding: 0 16px;
+  min-height: 56px;
+  padding: 8px 16px 8px 18px;
   box-sizing: border-box;
+}
+
+.toolbar-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+  color: var(--app-fg);
+}
+
+.toolbar-logo {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  background: linear-gradient(180deg, var(--app-accent), var(--app-accent-strong));
+  color: #fff;
+  font-size: 15px;
+  box-shadow: 0 6px 16px rgba(24, 160, 251, 0.28);
+}
+
+.toolbar-brand-copy {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.15;
+}
+
+.toolbar-brand-name {
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.toolbar-brand-sub {
+  font-size: 11px;
+  color: var(--app-muted);
 }
 
 .toolbar-title {
@@ -13,6 +49,7 @@
   align-items: center;
   gap: 10px;
   min-width: 0;
+  flex: 1;
 }
 
 .toolbar-name {
@@ -20,46 +57,64 @@
   border: none;
   color: inherit;
   font-size: 15px;
-  font-weight: 600;
+  font-weight: 650;
   cursor: pointer;
-  padding: 0;
+  padding: 6px 10px;
+  border-radius: var(--radius-sm);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
+.toolbar-name:hover {
+  background: var(--app-hover);
+}
+
 .toolbar-name.muted {
   cursor: default;
   font-weight: 500;
-  opacity: 0.65;
+  color: var(--app-muted);
+}
+
+.toolbar-name.muted:hover {
+  background: none;
 }
 
 .toolbar-name-input {
   font-size: 15px;
-  padding: 4px 8px;
-  border-radius: 4px;
-  border: 1px solid #555;
-  background: #2a2a2a;
+  padding: 7px 10px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--app-accent);
+  background: var(--input-bg);
   color: inherit;
-  min-width: 180px;
+  min-width: 200px;
+  outline: none;
 }
 
 .toolbar-status {
   font-size: 11px;
-  font-weight: 600;
-  padding: 2px 8px;
+  font-weight: 700;
+  padding: 3px 9px;
   border-radius: 999px;
-  text-transform: uppercase;
+  letter-spacing: 0.02em;
 }
 
 .toolbar-status.on {
-  color: #1faa7a;
-  background: rgba(31, 170, 122, 0.15);
+  color: #7ddea8;
+  background: rgba(46, 125, 79, 0.22);
 }
 
 .toolbar-status.off {
-  color: #f0a202;
-  background: rgba(240, 162, 2, 0.15);
+  color: #ffd27a;
+  background: rgba(240, 162, 2, 0.18);
+}
+
+.theme-light .toolbar-status.on {
+  color: var(--app-success);
+}
+
+.theme-light .toolbar-status.off {
+  color: var(--app-warning);
 }
 
 .toolbar-actions {
@@ -70,36 +125,43 @@
 }
 
 .toolbar-btn {
-  height: 32px;
-  padding: 0 12px;
-  border-radius: 6px;
-  border: 1px solid #444;
-  background: #2a2a2a;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 36px;
+  padding: 0 13px;
+  border-radius: 10px;
+  border: 1px solid var(--app-border);
+  background: var(--app-panel-2);
   color: inherit;
   font-size: 13px;
+  font-weight: 600;
   cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
 }
 
 .toolbar-btn:hover:not(:disabled) {
-  background: #353535;
+  background: var(--app-hover);
+  border-color: color-mix(in srgb, var(--app-accent) 40%, var(--app-border));
 }
 
 .toolbar-btn:disabled {
-  opacity: 0.45;
+  opacity: 0.42;
   cursor: not-allowed;
 }
 
 .toolbar-btn.primary {
-  background: #03a9f4;
-  border-color: #03a9f4;
+  background: var(--app-accent);
+  border-color: transparent;
   color: #fff;
 }
 
 .toolbar-btn.primary:hover:not(:disabled) {
-  background: #0293d6;
+  background: var(--app-accent-strong);
 }
 
 .toolbar-btn.active {
-  border-color: #03a9f4;
-  color: #03a9f4;
+  border-color: var(--app-accent);
+  color: var(--app-accent);
+  background: var(--app-selected);
 }
