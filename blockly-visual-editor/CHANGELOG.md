@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.3.8
+
+- Kopfzeile ist eine Zeile: App-Name und Automatisierung links, Aktionen rechts
+
 ## 0.3.7
 
 - Löschen einer Automatisierung fragt nicht mehr nach „Ordner löschen“

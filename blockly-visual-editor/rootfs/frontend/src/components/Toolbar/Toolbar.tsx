@@ -47,42 +47,42 @@ const Toolbar: React.FC<ToolbarProps> = ({
 
   return (
     <div className="toolbar-blockly">
-      <div className="toolbar-brand">
-        <span className="toolbar-logo" aria-hidden="true">
-          <FaPuzzlePieceIcon size={15} />
-        </span>
-        <span className="toolbar-brand-copy">
-          <span className="toolbar-brand-name">Blockly Editor</span>
-          <span className="toolbar-brand-sub">Home Assistant</span>
-        </span>
-      </div>
-      <div className="toolbar-title">
-        {hasAutomation ? (
-          isEditingAutomationName ? (
-            <input
-              className="toolbar-name-input"
-              value={automationNameInput}
-              onChange={(event) => setAutomationNameInput(event.target.value)}
-              onBlur={saveName}
-              onKeyDown={(event) => {
-                if (event.key === 'Enter') saveName();
-                if (event.key === 'Escape') setIsEditingAutomationName(false);
-              }}
-              autoFocus
-            />
-          ) : (
-            <button type="button" className="toolbar-name" onClick={() => setIsEditingAutomationName(true)} title="Umbenennen">
-              {displayName}
-            </button>
-          )
-        ) : (
-          <span className="toolbar-name muted">Keine Automatisierung ausgewählt</span>
-        )}
-        {currentAutomationStatus && (
-          <span className={`toolbar-status ${currentAutomationStatus}`}>
-            {currentAutomationStatus === 'on' ? 'Aktiv' : 'Gestoppt'}
+      <div className="toolbar-left">
+        <div className="toolbar-brand">
+          <span className="toolbar-logo" aria-hidden="true">
+            <FaPuzzlePieceIcon size={15} />
           </span>
-        )}
+          <span className="toolbar-brand-name">Blockly Editor</span>
+        </div>
+        <span className="toolbar-separator" aria-hidden="true" />
+        <div className="toolbar-title">
+          {hasAutomation ? (
+            isEditingAutomationName ? (
+              <input
+                className="toolbar-name-input"
+                value={automationNameInput}
+                onChange={(event) => setAutomationNameInput(event.target.value)}
+                onBlur={saveName}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter') saveName();
+                  if (event.key === 'Escape') setIsEditingAutomationName(false);
+                }}
+                autoFocus
+              />
+            ) : (
+              <button type="button" className="toolbar-name" onClick={() => setIsEditingAutomationName(true)} title="Umbenennen">
+                {displayName}
+              </button>
+            )
+          ) : (
+            <span className="toolbar-name muted">Keine Automatisierung ausgewählt</span>
+          )}
+          {currentAutomationStatus && (
+            <span className={`toolbar-status ${currentAutomationStatus}`}>
+              {currentAutomationStatus === 'on' ? 'Aktiv' : 'Gestoppt'}
+            </span>
+          )}
+        </div>
       </div>
       <div className="toolbar-actions">
         <button className="toolbar-btn primary" onClick={onSave} disabled={!hasAutomation}>
