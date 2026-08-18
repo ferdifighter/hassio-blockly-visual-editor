@@ -352,8 +352,18 @@
   stroke-width: 1.5px;
 }
 
+.blockly-editor-host .blocklyEditableField > text,
+.blockly-editor-host .blocklyNonEditableField > text {
+  fill: #1b1f2a !important;
+}
+
 .blocklyHtmlInput {
   color: #1b1f2a !important;
+  background-color: #ffffff !important;
+  caret-color: #1b1f2a;
+  border: none !important;
+  outline: none;
+  color-scheme: light;
   border-radius: 10px !important;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
 }

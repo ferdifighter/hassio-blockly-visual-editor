@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.6.6
+
+- Eingegebener Text in Block-Feldern ist wieder lesbar (dunkle Schrift auf hellem Feld)
+
 ## 0.6.5
 
 - „erstelle Text aus“ kommt ohne fest verdrahtete Textblöcke; beliebige Bausteine können angedockt werden
