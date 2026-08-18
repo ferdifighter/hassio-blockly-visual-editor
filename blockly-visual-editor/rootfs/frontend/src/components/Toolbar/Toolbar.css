@@ -129,6 +129,8 @@
   margin-left: auto;
   gap: 8px;
   flex: 0 0 auto;
+  max-width: 62%;
+  overflow-x: auto;
 }
 
 .toolbar-btn {
@@ -137,7 +139,7 @@
   align-items: center;
   gap: 7px;
   height: 36px;
-  padding: 0 13px;
+  padding: 0 11px;
   border-radius: 10px;
   border: 1px solid var(--app-border);
   background: var(--app-panel-2);

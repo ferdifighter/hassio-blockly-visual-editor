@@ -11,6 +11,7 @@ const {
   findMatchingState,
   pickDeviceName,
 } = require('./notifyNames');
+const { simulateAutomation } = require('./simulate');
 
 // Home Assistant Umgebungsvariablen
 const SCRIPTS_PATH = '/data/scripts.json';
@@ -811,6 +812,133 @@ app.get('/api/services', async (req, res) => {
   } catch (e) {
     console.error('Fehler beim Abrufen der Services:', e.response?.data || e.message);
     res.status(500).json({ error: e.response?.data || e.message });
+  }
+});
+
+function haAxiosConfig(token) {
+  const axiosConfig = { headers: { 'Content-Type': 'application/json' } };
+  if (token) {
+    axiosConfig.headers.Authorization = `Bearer ${token}`;
+  }
+  return axiosConfig;
+}
+
+function haErrorMessage(error) {
+  const data = error.response?.data;
+  if (typeof data === 'string' && data.trim()) {
+    return data;
+  }
+  if (data && typeof data === 'object') {
+    return data.message || data.error || JSON.stringify(data);
+  }
+  return error.message || String(error);
+}
+
+app.post('/api/simulate', async (req, res) => {
+  const automation = {
+    alias: req.body.alias || 'Simulation',
+    triggers: Array.isArray(req.body.triggers) ? req.body.triggers : [],
+    conditions: Array.isArray(req.body.conditions) ? req.body.conditions : [],
+    actions: Array.isArray(req.body.actions) ? req.body.actions : [],
+  };
+
+  const { HA_TOKEN, HA_URL } = getHACredentials();
+  if (!HA_URL) {
+    return res.status(500).json({ error: 'Home Assistant URL nicht verfügbar' });
+  }
+
+  const axiosConfig = haAxiosConfig(HA_TOKEN);
+  let statesList = [];
+  const services = {};
+  let now = new Date();
+
+  try {
+    const statesResult = await axios.get(`${HA_URL}/api/states`, axiosConfig);
+    statesList = Array.isArray(statesResult.data) ? statesResult.data : [];
+  } catch (error) {
+    return res.status(500).json({ error: `Zustände konnten nicht gelesen werden: ${haErrorMessage(error)}` });
+  }
+
+  try {
+    const servicesResult = await axios.get(`${HA_URL}/api/services`, axiosConfig);
+    const domains = Array.isArray(servicesResult.data) ? servicesResult.data : [];
+    for (const item of domains) {
+      const domain = item?.domain;
+      const domainServices = item?.services || {};
+      if (!domain || typeof domainServices !== 'object') {
+        continue;
+      }
+      for (const [name, meta] of Object.entries(domainServices)) {
+        services[`${domain}.${name}`] = meta || {};
+      }
+    }
+  } catch (error) {
+    console.warn('Dienste für die Simulation nicht verfügbar:', haErrorMessage(error));
+  }
+
+  try {
+    const nowResult = await axios.post(
+      `${HA_URL}/api/template`,
+      { template: '{{ now().isoformat() }}' },
+      axiosConfig,
+    );
+    const raw = typeof nowResult.data === 'string' ? nowResult.data : String(nowResult.data ?? '');
+    const parsed = new Date(raw.replace(/^"|"$/g, ''));
+    if (!Number.isNaN(parsed.getTime())) {
+      now = parsed;
+    }
+  } catch (error) {
+    console.warn('Home-Assistant-Zeit nicht verfügbar, nutze lokale Zeit:', haErrorMessage(error));
+  }
+
+  const stateMap = {};
+  for (const entity of statesList) {
+    if (entity?.entity_id) {
+      stateMap[entity.entity_id] = entity;
+    }
+  }
+
+  try {
+    const result = await simulateAutomation(automation, {
+      now,
+      states: stateMap,
+      services,
+      renderTemplate: async (template) => {
+        const tpl = String(template || '').trim();
+        if (!tpl) {
+          return '';
+        }
+        const body = tpl.includes('{{') ? tpl : `{{ ${tpl} }}`;
+        const response = await axios.post(`${HA_URL}/api/template`, { template: body }, axiosConfig);
+        if (typeof response.data === 'string') {
+          return response.data;
+        }
+        return JSON.stringify(response.data);
+      },
+      callQueryService: async (call) => {
+        const [domain, service] = String(call.action || '').split('.');
+        if (!domain || !service) {
+          throw new Error(`Ungültiger Dienst: ${call.action}`);
+        }
+        const payload = {};
+        if (call.target?.entity_id) {
+          payload.entity_id = call.target.entity_id;
+        }
+        if (call.data && typeof call.data === 'object') {
+          Object.assign(payload, call.data);
+        }
+        const response = await axios.post(
+          `${HA_URL}/api/services/${domain}/${service}?return_response`,
+          payload,
+          axiosConfig,
+        );
+        return response.data;
+      },
+    });
+    res.json(result);
+  } catch (error) {
+    console.error('Simulation fehlgeschlagen:', error);
+    res.status(500).json({ error: haErrorMessage(error) });
   }
 });
 

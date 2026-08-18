@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.4.0
+
+- Protokollfenster lässt sich ein- und ausblenden
+- Schaltfläche „Testen“ prüft die Automatisierung gegen den aktuellen Home-Assistant-Stand
+- Verbindungen zu Entitäten, Bedingungen und Abfragen (z. B. Integrationen wie Bierfinder) erscheinen im Protokoll
+- Schaltende Aktionen werden nur beschrieben, nicht ausgeführt
+
 ## 0.3.9
 
 - Speichern, Blöcke prüfen und YAML stehen rechts in der Kopfzeile

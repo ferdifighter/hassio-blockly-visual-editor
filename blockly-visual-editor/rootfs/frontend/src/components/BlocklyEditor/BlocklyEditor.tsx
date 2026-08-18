@@ -30,6 +30,7 @@ export interface BlocklyEditorHandle {
   handleSave: () => Promise<void>;
   showCode: () => string;
   checkBlocks: () => string[];
+  getAutomation: () => HomeAssistantAutomation | null;
 }
 
 interface BlocklyEditorProps {
@@ -312,7 +313,22 @@ const BlocklyEditor = forwardRef<BlocklyEditorHandle, BlocklyEditorProps>(
       return warnings;
     }, [emitStatus]);
 
-    useImperativeHandle(ref, () => ({ handleSave, showCode, checkBlocks }), [handleSave, showCode, checkBlocks]);
+    const getAutomation = useCallback((): HomeAssistantAutomation | null => {
+      if (!workspaceRef.current) {
+        return null;
+      }
+      return workspaceToAutomation(workspaceRef.current, {
+        id: automationId || 'preview',
+        alias: automationName || automationId || 'Neue Automatisierung',
+      });
+    }, [automationId, automationName]);
+
+    useImperativeHandle(ref, () => ({ handleSave, showCode, checkBlocks, getAutomation }), [
+      handleSave,
+      showCode,
+      checkBlocks,
+      getAutomation,
+    ]);
 
     return (
       <section className="blockly-editor">

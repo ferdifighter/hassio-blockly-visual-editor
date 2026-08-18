@@ -1,10 +1,12 @@
 import React, { useEffect, useState } from 'react';
-import { FaCode, FaFloppyDisk, FaListCheck, FaPuzzlePiece } from 'react-icons/fa6';
+import { FaCode, FaFloppyDisk, FaListCheck, FaPlay, FaPuzzlePiece, FaTerminal } from 'react-icons/fa6';
 import './Toolbar.css';
 
 const FaPuzzlePieceIcon = FaPuzzlePiece as React.ComponentType<{ size?: number }>;
 const FaFloppyDiskIcon = FaFloppyDisk as React.ComponentType<{ size?: number }>;
 const FaListCheckIcon = FaListCheck as React.ComponentType<{ size?: number }>;
+const FaPlayIcon = FaPlay as React.ComponentType<{ size?: number }>;
+const FaTerminalIcon = FaTerminal as React.ComponentType<{ size?: number }>;
 const FaCodeIcon = FaCode as React.ComponentType<{ size?: number }>;
 
 interface ToolbarProps {
@@ -12,10 +14,14 @@ interface ToolbarProps {
   currentAutomationId?: string | null;
   currentAutomationStatus?: 'on' | 'off' | undefined;
   yamlOpen?: boolean;
+  logOpen?: boolean;
+  simulating?: boolean;
   onRenameAutomation?: (newName: string) => void;
   onSave?: () => void;
   onCheckBlocks?: () => void;
   onShowCode?: () => void;
+  onSimulate?: () => void;
+  onToggleLog?: () => void;
 }
 
 const Toolbar: React.FC<ToolbarProps> = ({
@@ -23,10 +29,14 @@ const Toolbar: React.FC<ToolbarProps> = ({
   currentAutomationId,
   currentAutomationStatus,
   yamlOpen,
+  logOpen,
+  simulating,
   onRenameAutomation,
   onSave,
   onCheckBlocks,
   onShowCode,
+  onSimulate,
+  onToggleLog,
 }) => {
   const [automationNameInput, setAutomationNameInput] = useState('');
   const [isEditingAutomationName, setIsEditingAutomationName] = useState(false);
@@ -92,6 +102,14 @@ const Toolbar: React.FC<ToolbarProps> = ({
         <button className="toolbar-btn" onClick={onCheckBlocks} disabled={!hasAutomation}>
           <FaListCheckIcon size={13} />
           Blöcke prüfen
+        </button>
+        <button className="toolbar-btn" onClick={onSimulate} disabled={!hasAutomation || simulating} title="Automatisierung gegen Home Assistant testen">
+          <FaPlayIcon size={12} />
+          {simulating ? 'Test läuft…' : 'Testen'}
+        </button>
+        <button className={`toolbar-btn ${logOpen ? 'active' : ''}`} onClick={onToggleLog}>
+          <FaTerminalIcon size={13} />
+          Protokoll
         </button>
         <button className={`toolbar-btn ${yamlOpen ? 'active' : ''}`} onClick={onShowCode}>
           <FaCodeIcon size={13} />

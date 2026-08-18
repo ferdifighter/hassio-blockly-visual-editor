@@ -1,0 +1,155 @@
+.app-log {
+  flex: 0 0 280px;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  border-top: 1px solid var(--app-border);
+  background: var(--app-panel-2);
+}
+
+.app-log-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 12px 8px 16px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--app-muted);
+}
+
+.app-log-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.app-log-header button {
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: var(--app-hover);
+  color: inherit;
+  cursor: pointer;
+  font-size: 16px;
+}
+
+.app-log-header button:hover:not(:disabled) {
+  background: var(--app-selected);
+}
+
+.app-log-action {
+  width: auto !important;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 10px;
+  font-size: 12px !important;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.app-log-header button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.app-log-list {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 4px 12px 12px;
+}
+
+.app-log-empty,
+.app-log-running {
+  padding: 12px 4px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--app-muted);
+}
+
+.app-log-row {
+  display: grid;
+  grid-template-columns: 72px 72px minmax(0, 1fr);
+  gap: 8px;
+  padding: 7px 4px;
+  border-top: 1px solid color-mix(in srgb, var(--app-border) 70%, transparent);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.app-log-time {
+  color: var(--app-muted);
+  font-variant-numeric: tabular-nums;
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+
+.app-log-level {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  align-self: start;
+  padding-top: 2px;
+}
+
+.app-log-message {
+  color: var(--app-fg);
+}
+
+.app-log-body details {
+  margin-top: 6px;
+}
+
+.app-log-body summary {
+  cursor: pointer;
+  color: var(--app-muted);
+  font-size: 11px;
+}
+
+.app-log-body pre {
+  margin: 6px 0 0;
+  padding: 8px 10px;
+  overflow: auto;
+  max-height: 160px;
+  border-radius: var(--radius-sm);
+  background: var(--app-panel);
+  font-size: 11px;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.level-ok .app-log-level {
+  color: #7ddea8;
+}
+
+.level-warn .app-log-level {
+  color: #ffd27a;
+}
+
+.level-error .app-log-level {
+  color: #ff8a80;
+}
+
+.level-result .app-log-level {
+  color: var(--app-accent);
+}
+
+.theme-light .level-ok .app-log-level {
+  color: var(--app-success);
+}
+
+.theme-light .level-warn .app-log-level {
+  color: var(--app-warning);
+}
+
+.theme-light .level-error .app-log-level {
+  color: var(--app-danger);
+}

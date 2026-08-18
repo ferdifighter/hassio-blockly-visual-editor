@@ -1,14 +1,19 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import './App.css';
 import BlocklyEditor, { BlocklyEditorHandle } from './components/BlocklyEditor/BlocklyEditor';
 import Toolbar from './components/Toolbar/Toolbar';
 import Sidebar from './components/Sidebar/Sidebar';
+import ProtocolPanel, { SimulateEntry } from './components/ProtocolPanel/ProtocolPanel';
+import { apiSend } from './api';
 
 const App: React.FC = () => {
   const [theme] = useState<'light' | 'dark' | 'auto'>('auto');
   const [selectedAutomationId, setSelectedAutomationId] = useState<string | null>(null);
   const [yamlPreview, setYamlPreview] = useState('');
   const [yamlOpen, setYamlOpen] = useState(false);
+  const [logOpen, setLogOpen] = useState(false);
+  const [logEntries, setLogEntries] = useState<SimulateEntry[]>([]);
+  const [simulating, setSimulating] = useState(false);
   const blocklyEditorRef = useRef<BlocklyEditorHandle>(null);
   const [resolvedTheme, setResolvedTheme] = useState<'light' | 'dark'>('dark');
 
@@ -47,6 +52,44 @@ const App: React.FC = () => {
     return undefined;
   }, [theme]);
 
+  const runSimulation = useCallback(async () => {
+    const automation = blocklyEditorRef.current?.getAutomation();
+    setLogOpen(true);
+    if (!automation) {
+      setLogEntries([{
+        level: 'error',
+        category: 'summary',
+        message: 'Keine Automatisierung zum Testen. Wähle links einen Eintrag und setze Blöcke.',
+        time: new Date().toISOString(),
+      }]);
+      return;
+    }
+
+    setSimulating(true);
+    try {
+      const result = await apiSend<{ entries?: SimulateEntry[] }>('api/simulate', 'POST', automation);
+      setLogEntries(Array.isArray(result.entries) ? result.entries : []);
+    } catch (error) {
+      let message = error instanceof Error ? error.message : 'Test fehlgeschlagen.';
+      try {
+        const parsed = JSON.parse(message) as { error?: unknown };
+        if (typeof parsed.error === 'string') {
+          message = parsed.error;
+        }
+      } catch {
+        // raw text
+      }
+      setLogEntries([{
+        level: 'error',
+        category: 'summary',
+        message,
+        time: new Date().toISOString(),
+      }]);
+    } finally {
+      setSimulating(false);
+    }
+  }, []);
+
   return (
     <div className={`app-shell theme-${resolvedTheme}`}>
       <header className="app-toolbar">
@@ -55,12 +98,16 @@ const App: React.FC = () => {
           currentAutomationId={toolbarData.currentAutomationId}
           currentAutomationStatus={toolbarData.currentAutomationStatus}
           yamlOpen={yamlOpen}
+          logOpen={logOpen}
+          simulating={simulating}
           onSave={() => blocklyEditorRef.current?.handleSave()}
           onCheckBlocks={() => blocklyEditorRef.current?.checkBlocks()}
           onShowCode={() => {
             blocklyEditorRef.current?.showCode();
             setYamlOpen((open) => !open);
           }}
+          onSimulate={runSimulation}
+          onToggleLog={() => setLogOpen((open) => !open)}
         />
       </header>
       <div className="app-body">
@@ -99,6 +146,16 @@ const App: React.FC = () => {
               </div>
               <pre>{yamlPreview || '# Wähle eine Automatisierung und setze Blöcke.'}</pre>
             </div>
+          )}
+          {logOpen && (
+            <ProtocolPanel
+              entries={logEntries}
+              running={simulating}
+              canRun={Boolean(toolbarData.currentAutomationId)}
+              onClose={() => setLogOpen(false)}
+              onClear={() => setLogEntries([])}
+              onRun={runSimulation}
+            />
           )}
         </section>
       </div>
