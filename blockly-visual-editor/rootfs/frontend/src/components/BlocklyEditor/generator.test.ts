@@ -1,6 +1,7 @@
 import { describe, expect, it, beforeAll } from 'vitest';
 import * as Blockly from 'blockly';
 import { registerAllHomeAssistantBlocks } from './blocks';
+import { HA_TOOLBOX } from './toolbox';
 import {
   automationToYaml,
   blockToAction,
@@ -183,7 +184,17 @@ describe('Home Assistant Blockly-Generator', () => {
     expect(join.getInput('ADD0')).toBeTruthy();
     expect(join.getInput('ADD1')).toBeTruthy();
     expect(join.getInput('ADD2')).toBeTruthy();
+    expect(join.getInput('ADD0')?.connection?.getCheck()).toBeNull();
+    expect(join.getInput('ADD0')?.connection?.targetBlock()).toBeNull();
     workspace.dispose();
+  });
+
+  it('liefert den Text-Join-Block ohne fest verdrahtete Schattenblöcke', () => {
+    const textCategory = HA_TOOLBOX.contents.find((entry) => 'name' in entry && entry.name === 'Text') as {
+      contents: Array<Record<string, unknown>>;
+    };
+    const join = textCategory.contents.find((entry) => entry.type === 'ha_text_join');
+    expect(join).toEqual({ kind: 'block', type: 'ha_text_join' });
   });
 
   it('setzt allgemeinen Text aus Teilen zusammen', () => {

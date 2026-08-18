@@ -77,7 +77,7 @@ export function registerTextBlocks(): void {
       }
       for (let i = 0; i < this.itemCount_; i += 1) {
         if (!this.getInput(`ADD${i}`)) {
-          this.appendValueInput(`ADD${i}`).setAlign(Blockly.inputs.Align.RIGHT);
+          this.appendValueInput(`ADD${i}`).setAlign(Blockly.inputs.Align.RIGHT).setCheck(null);
         }
       }
       this.appendDummyInput('CONTROLS')

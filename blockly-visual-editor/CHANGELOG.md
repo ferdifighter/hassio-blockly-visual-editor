@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.6.5
+
+- „erstelle Text aus“ kommt ohne fest verdrahtete Textblöcke; beliebige Bausteine können angedockt werden
+
 ## 0.6.4
 
 - Personen werden im Dialog „Benachrichtigung senden an“ wieder den Smartphones zugeordnet

@@ -57,16 +57,7 @@ export const HA_TOOLBOX = {
       colour: '#C0CA33',
       contents: [
         { kind: 'block', type: 'ha_text' },
-        {
-          kind: 'block',
-          type: 'ha_text_join',
-          extraState: { itemCount: 2 },
-          fields: { SEP: 'space' },
-          inputs: {
-            ADD0: { shadow: { type: 'ha_text', fields: { TEXT: '' } } },
-            ADD1: { shadow: { type: 'ha_text', fields: { TEXT: '' } } },
-          },
-        },
+        { kind: 'block', type: 'ha_text_join' },
         { kind: 'block', type: 'ha_text_labeled' },
         { kind: 'block', type: 'ha_text_length' },
         { kind: 'block', type: 'ha_text_contains' },
