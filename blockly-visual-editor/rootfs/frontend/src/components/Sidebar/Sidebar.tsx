@@ -5,6 +5,7 @@ import './Sidebar.css';
 import { DndProvider, useDrag, useDrop } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 import { getApiUrl } from '../../api';
+import { moveNodeInTree } from './treeMove';
 
 // Icons explizit als React-Komponenten typisieren
 const FaFolderPlusIcon = FaFolderPlus as React.ComponentType<any>;
@@ -119,7 +120,7 @@ const DraggableTreeNode: React.FC<{
 
   const [{ isOver, canDrop }, drop] = useDrop(() => ({
     accept: ITEM_TYPE,
-    canDrop: (item: any) => element.type === 'folder' && item.id !== element.id,
+    canDrop: (item: any) => Boolean(item?.id) && item.id !== element.id && element.id !== 'root',
     drop: (item: any) => {
       if (item.id !== element.id) {
         onDropNode(item.id, element.id);
@@ -131,14 +132,41 @@ const DraggableTreeNode: React.FC<{
     }),
   }), [element, onDropNode]);
 
+  const dropKind = element.type === 'folder' ? 'into' : 'sibling';
+
   return (
     <div
       ref={node => { drag(drop(node)); }}
-      style={{
-        background: isOver && canDrop ? '#2a4155' : undefined,
-        borderRadius: isOver && canDrop ? 4 : undefined,
-        opacity: isDragging ? 0.5 : 1
-      }}
+      className={isOver && canDrop ? `tree-drop tree-drop-${dropKind}` : undefined}
+      style={{ opacity: isDragging ? 0.5 : 1 }}
+    >
+      {children}
+    </div>
+  );
+};
+
+const RootDropZone: React.FC<{
+  children: React.ReactNode;
+  onDropRoot: (dragId: string) => void;
+}> = ({ children, onDropRoot }) => {
+  const [{ isOver, canDrop }, drop] = useDrop(() => ({
+    accept: ITEM_TYPE,
+    drop: (item: { id: string }, monitor) => {
+      if (monitor.didDrop() || !item?.id) {
+        return;
+      }
+      onDropRoot(item.id);
+    },
+    collect: (monitor) => ({
+      isOver: monitor.isOver({ shallow: true }),
+      canDrop: monitor.canDrop(),
+    }),
+  }), [onDropRoot]);
+
+  return (
+    <div
+      ref={node => { drop(node); }}
+      className={`sidebar-tree ${isOver && canDrop ? 'is-drop-root' : ''}`}
     >
       {children}
     </div>
@@ -675,40 +703,9 @@ const Sidebar: React.FC<SidebarProps> = ({ onSelectionChange }) => {
   // Drag & Drop
   const handleDropNode = (dragId: string, dropId: string) => {
     if (!treeObj) return;
-    
-    const removeNode = (node: any, removeId: string): [any, any | null] => {
-      if (!node.children) return [node, null];
-      let removed: any = null;
-      const filtered = node.children.filter((child: any) => {
-        if (child.id === removeId) {
-          removed = child;
-          return false;
-        }
-        return true;
-      });
-      let newChildren = filtered.map((child: any) => {
-        const [newChild, found] = removeNode(child, removeId);
-        if (found) removed = found;
-        return newChild;
-      });
-      return [{ ...node, children: newChildren }, removed];
-    };
-    
-    const addNode = (node: any, targetId: string, toAdd: any): any => {
-      if (node.id === targetId && node.type === 'folder') {
-        return { ...node, children: [...(node.children || []), toAdd] };
-      }
-      if (node.children) {
-        return { ...node, children: node.children.map((child: any) => addNode(child, targetId, toAdd)) };
-      }
-      return node;
-    };
-    
     const rootObj = treeObj.id ? treeObj : { ...treeObj, id: 'root' };
-    const [treeWithout, movedNode] = removeNode(rootObj, dragId);
-    if (!movedNode) return;
-    const newTree = addNode(treeWithout, dropId, movedNode);
-    
+    const newTree = moveNodeInTree(rootObj, dragId, dropId);
+    if (!newTree || newTree === rootObj) return;
     treeDirtyRef.current = true;
     setTreeObj(newTree);
     persistTreeData(newTree);
@@ -722,43 +719,13 @@ const Sidebar: React.FC<SidebarProps> = ({ onSelectionChange }) => {
 
     const moveAutomationToFolder = useCallback((folderId: string) => {
       if (!selectedAutomation || !folderId || !treeObj) return;
-    
-    const removeNode = (node: any, removeId: string): [any, any | null] => {
-      if (!node.children) return [node, null];
-      let removed: any = null;
-      const filtered = node.children.filter((child: any) => {
-        if (child.id === removeId) {
-          removed = child;
-          return false;
-        }
-        return true;
-      });
-      let newChildren = filtered.map((child: any) => {
-        const [newChild, found] = removeNode(child, removeId);
-        if (found) removed = found;
-        return newChild;
-      });
-      return [{ ...node, children: newChildren }, removed];
-    };
-    
-    const addNode = (node: any, targetId: string, toAdd: any): any => {
-      if (node.id === targetId && node.type === 'folder') {
-        return { ...node, children: [...(node.children || []), toAdd] };
-      }
-      if (node.children) {
-        return { ...node, children: node.children.map((child: any) => addNode(child, targetId, toAdd)) };
-      }
-      return node;
-    };
-    
-          const [treeWithout, movedNode] = removeNode(treeObj, selectedAutomation.id);
-      if (!movedNode) return;
-    const newTree = addNode(treeWithout, folderId, movedNode);
-    
-    treeDirtyRef.current = true;
-    setTreeObj(newTree);
-    persistTreeData(newTree);
-        }, [selectedAutomation, treeObj]);
+      const rootObj = treeObj.id ? treeObj : { ...treeObj, id: 'root' };
+      const newTree = moveNodeInTree(rootObj, selectedAutomation.id, folderId);
+      if (!newTree || newTree === rootObj) return;
+      treeDirtyRef.current = true;
+      setTreeObj(newTree);
+      persistTreeData(newTree);
+    }, [selectedAutomation, treeObj]);
 
   // Callback für Toolbar
   useEffect(() => {
@@ -808,14 +775,15 @@ const Sidebar: React.FC<SidebarProps> = ({ onSelectionChange }) => {
           />
         </div>
         
-        <div 
-          className="sidebar-tree" 
-          onClick={(e) => {
-            if (e.target === e.currentTarget) {
-              setSelectedId(null);
-            }
-          }}
-        >
+        <RootDropZone onDropRoot={(dragId) => handleDropNode(dragId, 'root')}>
+          <div
+            className="sidebar-tree-inner"
+            onClick={(e) => {
+              if (e.target === e.currentTarget) {
+                setSelectedId(null);
+              }
+            }}
+          >
           {treeData && treeData.length > 0 ? (
             <TreeView
               data={sanitizeTreeData(treeData)}
@@ -983,6 +951,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onSelectionChange }) => {
             </div>
           )}
         </div>
+        </RootDropZone>
       </aside>
     </DndProvider>
   );

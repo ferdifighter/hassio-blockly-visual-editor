@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.4.1
+
+- Automatisierungen können wieder aus einem Ordner auf die gleiche Ebene wie der Ordner gezogen werden
+
 ## 0.4.0
 
 - Protokollfenster lässt sich ein- und ausblenden
