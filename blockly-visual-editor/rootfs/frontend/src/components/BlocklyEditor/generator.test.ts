@@ -5,6 +5,7 @@ import {
   automationToYaml,
   blockToAction,
   blockToCondition,
+  blockToExpression,
   blockToText,
   blockToTrigger,
   emptyWorkspaceState,
@@ -175,30 +176,85 @@ describe('Home Assistant Blockly-Generator', () => {
     workspace.dispose();
   });
 
-  it('setzt mehrzeiligen Angebotstext aus Teilen zusammen', () => {
+  it('setzt allgemeinen Text aus Teilen zusammen', () => {
     const workspace = new Blockly.Workspace();
     const join = workspace.newBlock('ha_text_join');
     join.setFieldValue('nl', 'SEP');
     const title = workspace.newBlock('ha_text');
-    title.setFieldValue('Radeberger Pilsner Angebot', 'TEXT');
+    title.setFieldValue('Fenster geöffnet', 'TEXT');
     join.getInput('ADD0')?.connection?.connect(title.outputConnection!);
-    const place = workspace.newBlock('ha_text_labeled');
-    place.setFieldValue('Ort', 'LABEL');
-    const store = workspace.newBlock('ha_text');
-    store.setFieldValue('Netto Markendiscount', 'TEXT');
-    place.getInput('VALUE')?.connection?.connect(store.outputConnection!);
-    join.getInput('ADD1')?.connection?.connect(place.outputConnection!);
-    const price = workspace.newBlock('ha_text_labeled');
-    price.setFieldValue('Preis', 'LABEL');
-    const amount = workspace.newBlock('ha_entity_attribute');
-    amount.setFieldValue('sensor.bierfinder', 'ENTITY_ID');
-    amount.setFieldValue('price', 'ATTR');
-    price.getInput('VALUE')?.connection?.connect(amount.outputConnection!);
-    join.getInput('ADD2')?.connection?.connect(price.outputConnection!);
+    const state = workspace.newBlock('ha_entity_state');
+    state.setFieldValue('binary_sensor.fenster', 'ENTITY_ID');
+    join.getInput('ADD1')?.connection?.connect(state.outputConnection!);
+    expect(blockToText(join)).toBe('{{ ("Fenster geöffnet") ~ "\\n" ~ (states(\'binary_sensor.fenster\')) }}');
+    workspace.dispose();
+  });
 
-    expect(blockToText(join)).toBe(
-      'Radeberger Pilsner Angebot\nOrt: Netto Markendiscount\nPreis: {{ state_attr(\'sensor.bierfinder\', \'price\') }}',
-    );
+  it('vergleicht Werte und verknüpft Logik wie in ioBroker Blockly', () => {
+    const workspace = new Blockly.Workspace();
+    const left = workspace.newBlock('ha_entity_state');
+    left.setFieldValue('sensor.temperatur', 'ENTITY_ID');
+    const right = workspace.newBlock('ha_number');
+    right.setFieldValue(50, 'NUM');
+    const compare = workspace.newBlock('ha_compare');
+    compare.setFieldValue('GT', 'OP');
+    compare.getInput('A')?.connection?.connect(left.outputConnection!);
+    compare.getInput('B')?.connection?.connect(right.outputConnection!);
+    expect(blockToExpression(compare)).toBe("(states('sensor.temperatur') | float(0)) > (50 | float(0))");
+
+    const equals = workspace.newBlock('ha_compare');
+    equals.setFieldValue('EQ', 'OP');
+    const state = workspace.newBlock('ha_entity_state');
+    state.setFieldValue('light.kueche', 'ENTITY_ID');
+    const on = workspace.newBlock('ha_text');
+    on.setFieldValue('on', 'TEXT');
+    equals.getInput('A')?.connection?.connect(state.outputConnection!);
+    equals.getInput('B')?.connection?.connect(on.outputConnection!);
+    expect(blockToExpression(equals)).toBe("(states('light.kueche')) == (\"on\")");
+
+    const other = workspace.newBlock('ha_compare');
+    other.setFieldValue('LT', 'OP');
+    const n1 = workspace.newBlock('ha_number');
+    n1.setFieldValue(1, 'NUM');
+    const n2 = workspace.newBlock('ha_number');
+    n2.setFieldValue(2, 'NUM');
+    other.getInput('A')?.connection?.connect(n1.outputConnection!);
+    other.getInput('B')?.connection?.connect(n2.outputConnection!);
+    const andBlock = workspace.newBlock('ha_logic_op');
+    andBlock.setFieldValue('AND', 'OP');
+    andBlock.getInput('A')?.connection?.connect(compare.outputConnection!);
+    andBlock.getInput('B')?.connection?.connect(other.outputConnection!);
+    expect(blockToExpression(andBlock)).toContain(' and ');
+
+    const notBlock = workspace.newBlock('ha_logic_not');
+    const bool = workspace.newBlock('ha_boolean');
+    bool.setFieldValue('false', 'BOOL');
+    notBlock.getInput('VALUE')?.connection?.connect(bool.outputConnection!);
+    expect(blockToExpression(notBlock)).toBe('not (false)');
+
+    const when = workspace.newBlock('ha_if_boolean');
+    const copy = workspace.newBlock('ha_compare');
+    copy.setFieldValue('EQ', 'OP');
+    const a = workspace.newBlock('ha_number');
+    a.setFieldValue(1, 'NUM');
+    const b = workspace.newBlock('ha_number');
+    b.setFieldValue(1, 'NUM');
+    copy.getInput('A')?.connection?.connect(a.outputConnection!);
+    copy.getInput('B')?.connection?.connect(b.outputConnection!);
+    when.getInput('BOOL')?.connection?.connect(copy.outputConnection!);
+    expect(blockToCondition(when)).toEqual({
+      condition: 'template',
+      value_template: '{{ (1) == (1) }}',
+    });
+
+    const falls = workspace.newBlock('ha_if_logic');
+    const flag = workspace.newBlock('ha_boolean');
+    flag.setFieldValue('true', 'BOOL');
+    falls.getInput('IF')?.connection?.connect(flag.outputConnection!);
+    expect(blockToAction(falls)).toEqual({
+      if: [{ condition: 'template', value_template: '{{ true }}' }],
+      then: [],
+    });
     workspace.dispose();
   });
 

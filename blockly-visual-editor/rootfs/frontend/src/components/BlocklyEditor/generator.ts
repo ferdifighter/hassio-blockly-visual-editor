@@ -38,6 +38,7 @@ const CONDITION_TYPES = new Set([
   'ha_if_present',
   'ha_if_zone',
   'ha_if_not_remembered',
+  'ha_if_boolean',
 ]);
 
 const ACTION_TYPES = new Set([
@@ -59,6 +60,7 @@ const ACTION_TYPES = new Set([
   'ha_notify_telegram',
   'ha_alexa_speak',
   'ha_remember',
+  'ha_if_logic',
 ]);
 
 function field(block: Blockly.Block, name: string): string {
@@ -122,48 +124,127 @@ export function asValueTemplate(value: string): string {
   return `{{ ${templateToExpression(value)} }}`;
 }
 
-export function blockToText(block: Blockly.Block | null): string {
+const MATH_OPS: Record<string, string> = {
+  ADD: '+',
+  SUB: '-',
+  MUL: '*',
+  DIV: '/',
+};
+
+function compareExpression(left: string, right: string, op: string): string {
+  switch (op) {
+    case 'EQ':
+      return `(${left}) == (${right})`;
+    case 'NEQ':
+      return `(${left}) != (${right})`;
+    case 'LT':
+      return `(${left} | float(0)) < (${right} | float(0))`;
+    case 'LTE':
+      return `(${left} | float(0)) <= (${right} | float(0))`;
+    case 'GT':
+      return `(${left} | float(0)) > (${right} | float(0))`;
+    case 'GTE':
+      return `(${left} | float(0)) >= (${right} | float(0))`;
+    default:
+      return `(${left}) == (${right})`;
+  }
+}
+
+export function blockToExpression(block: Blockly.Block | null): string {
   if (!block) {
-    return '';
+    return "''";
   }
   switch (block.type) {
     case 'ha_text':
-      return field(block, 'TEXT');
+      return JSON.stringify(field(block, 'TEXT'));
+    case 'ha_number':
+      return String(Number(block.getFieldValue('NUM') ?? 0));
+    case 'ha_boolean':
+      return field(block, 'BOOL') === 'false' ? 'false' : 'true';
     case 'ha_text_labeled': {
-      const label = field(block, 'LABEL') || 'Wert';
-      const value = inputToText(block, 'VALUE');
-      return `${label}: ${value}`;
+      const label = field(block, 'LABEL');
+      const value = inputToExpression(block, 'VALUE');
+      return label ? `${JSON.stringify(`${label} `)} ~ (${value})` : value;
     }
     case 'ha_entity_state': {
       const entityId = field(block, 'ENTITY_ID');
-      return entityId ? `{{ states('${entityId}') }}` : '';
+      return entityId ? `states('${entityId}')` : "''";
     }
     case 'ha_entity_attribute': {
       const entityId = field(block, 'ENTITY_ID');
       const attr = field(block, 'ATTR') || 'friendly_name';
-      return entityId ? `{{ state_attr('${entityId}', '${attr}') }}` : '';
+      return entityId ? `state_attr('${entityId}', '${attr}')` : "''";
     }
-    case 'ha_variable_get': {
-      const name = field(block, 'NAME') || 'var';
-      return `{{ ${name} }}`;
-    }
+    case 'ha_variable_get':
+      return field(block, 'NAME') || 'var';
     case 'ha_text_join': {
       const sepField = field(block, 'SEP');
       const sep = sepField === 'nl' ? '\n' : sepField === 'space' ? ' ' : '';
       const parts: string[] = [];
       let index = 0;
       while (block.getInput(`ADD${index}`)) {
-        const part = inputToText(block, `ADD${index}`);
-        if (part) {
-          parts.push(part);
+        const target = block.getInputTargetBlock(`ADD${index}`);
+        if (target) {
+          parts.push(blockToExpression(target));
         }
         index += 1;
       }
-      return parts.join(sep);
+      if (!parts.length) {
+        return "''";
+      }
+      if (parts.length === 1) {
+        return parts[0];
+      }
+      const joiner = sep ? ` ~ ${JSON.stringify(sep)} ~ ` : ' ~ ';
+      return parts.map((part) => `(${part})`).join(joiner);
     }
+    case 'ha_text_length':
+      return `(${inputToExpression(block, 'VALUE')} | string | length)`;
+    case 'ha_text_is_empty':
+      return `not (${inputToExpression(block, 'VALUE')} | string)`;
+    case 'ha_text_contains':
+      return `(${inputToExpression(block, 'NEEDLE')} | string) in (${inputToExpression(block, 'TEXT')} | string)`;
+    case 'ha_to_number':
+      return `(${inputToExpression(block, 'VALUE')} | float(0))`;
+    case 'ha_math': {
+      const op = MATH_OPS[field(block, 'OP')] || '+';
+      return `(${inputToExpression(block, 'A')} | float(0)) ${op} (${inputToExpression(block, 'B')} | float(0))`;
+    }
+    case 'ha_compare':
+      return compareExpression(inputToExpression(block, 'A'), inputToExpression(block, 'B'), field(block, 'OP') || 'EQ');
+    case 'ha_logic_op': {
+      const op = field(block, 'OP') === 'OR' ? 'or' : 'and';
+      return `(${inputToExpression(block, 'A')}) ${op} (${inputToExpression(block, 'B')})`;
+    }
+    case 'ha_logic_not':
+      return `not (${inputToExpression(block, 'VALUE')})`;
+    case 'ha_logic_ternary':
+      return `(${inputToExpression(block, 'THEN')}) if (${inputToExpression(block, 'IF')}) else (${inputToExpression(block, 'ELSE')})`;
     default:
-      return '';
+      return "''";
   }
+}
+
+export function inputToExpression(block: Blockly.Block, inputName: string): string {
+  return blockToExpression(block.getInputTargetBlock(inputName));
+}
+
+export function blockToText(block: Blockly.Block | null): string {
+  if (!block) {
+    return '';
+  }
+  if (block.type === 'ha_text') {
+    return field(block, 'TEXT');
+  }
+  const expr = blockToExpression(block);
+  if (/^"(?:\\.|[^"\\])*"$/.test(expr)) {
+    try {
+      return JSON.parse(expr) as string;
+    } catch {
+      // keep template
+    }
+  }
+  return `{{ ${expr} }}`;
 }
 
 export function inputToText(block: Blockly.Block, inputName: string): string {
@@ -344,6 +425,11 @@ export function blockToCondition(block: Blockly.Block): JsonObject | null {
         value_template: `{{ (${templateToExpression(value)}) != states('${helper}') }}`,
       };
     }
+    case 'ha_if_boolean':
+      return {
+        condition: 'template',
+        value_template: `{{ ${inputToExpression(block, 'BOOL')} }}`,
+      };
     default:
       return null;
   }
@@ -428,6 +514,24 @@ export function blockToAction(block: Blockly.Block): JsonObject | null {
         if: collectStatementBlocks(block, 'IF')
           .map(blockToCondition)
           .filter((item): item is JsonObject => Boolean(item)),
+        then: collectStatementBlocks(block, 'THEN')
+          .map(blockToAction)
+          .filter((item): item is JsonObject => Boolean(item)),
+        else: (() => {
+          const actions = collectStatementBlocks(block, 'ELSE')
+            .map(blockToAction)
+            .filter((item): item is JsonObject => Boolean(item));
+          return actions.length ? actions : undefined;
+        })(),
+      });
+    case 'ha_if_logic':
+      return omitEmpty({
+        if: [
+          {
+            condition: 'template',
+            value_template: `{{ ${inputToExpression(block, 'IF')} }}`,
+          },
+        ],
         then: collectStatementBlocks(block, 'THEN')
           .map(blockToAction)
           .filter((item): item is JsonObject => Boolean(item)),

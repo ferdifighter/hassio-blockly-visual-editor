@@ -29,13 +29,13 @@ export function registerTextBlocks(): void {
       this.itemCount_ = 3;
       this.setColour(65);
       this.setOutput(true, 'Text');
-      this.setTooltip('Setzt Text, Entitätswerte und Variablen zu einer Nachricht zusammen.');
+      this.setTooltip('Erstellt einen Text aus mehreren Teilen, genau wie in ioBroker Blockly.');
       this.appendDummyInput('HEADER')
-        .appendField('Text zusammensetzen')
+        .appendField('erstelle Text aus')
         .appendField(
           new Blockly.FieldDropdown([
-            ['mit neuer Zeile', 'nl'],
             ['mit Leerzeichen', 'space'],
+            ['mit neuer Zeile', 'nl'],
             ['ohne Trenner', 'none'],
           ]),
           'SEP',
@@ -76,9 +76,7 @@ export function registerTextBlocks(): void {
       }
       for (let i = 0; i < this.itemCount_; i += 1) {
         if (!this.getInput(`ADD${i}`)) {
-          this.appendValueInput(`ADD${i}`)
-            .setCheck('Text')
-            .appendField(i === 0 ? 'Teile' : '');
+          this.appendValueInput(`ADD${i}`);
         }
       }
       this.appendDummyInput('CONTROLS')

@@ -29,9 +29,26 @@ export const HA_TOOLBOX = {
       name: 'Logik',
       colour: '#43A047',
       contents: [
+        { kind: 'block', type: 'ha_if_logic' },
+        { kind: 'block', type: 'ha_compare' },
+        { kind: 'block', type: 'ha_logic_op' },
+        { kind: 'block', type: 'ha_logic_not' },
+        { kind: 'block', type: 'ha_boolean' },
+        { kind: 'block', type: 'ha_logic_ternary' },
+        { kind: 'block', type: 'ha_if_boolean' },
         { kind: 'block', type: 'ha_if_and' },
         { kind: 'block', type: 'ha_if_or' },
         { kind: 'block', type: 'ha_if_not' },
+      ],
+    },
+    {
+      kind: 'category',
+      name: 'Mathematik',
+      colour: '#5C6BC0',
+      contents: [
+        { kind: 'block', type: 'ha_number' },
+        { kind: 'block', type: 'ha_math' },
+        { kind: 'block', type: 'ha_to_number' },
       ],
     },
     {
@@ -40,30 +57,23 @@ export const HA_TOOLBOX = {
       colour: '#C0CA33',
       contents: [
         { kind: 'block', type: 'ha_text' },
-        { kind: 'block', type: 'ha_text_labeled' },
-        { kind: 'block', type: 'ha_entity_state' },
-        { kind: 'block', type: 'ha_entity_attribute' },
-        { kind: 'block', type: 'ha_variable_get' },
         {
           kind: 'block',
           type: 'ha_text_join',
-          extraState: { itemCount: 4 },
-          fields: { SEP: 'nl' },
+          extraState: { itemCount: 2 },
+          fields: { SEP: 'space' },
           inputs: {
-            ADD0: {
-              shadow: { type: 'ha_text', fields: { TEXT: 'Radeberger Pilsner Angebot' } },
-            },
-            ADD1: {
-              shadow: { type: 'ha_text_labeled', fields: { LABEL: 'Von' } },
-            },
-            ADD2: {
-              shadow: { type: 'ha_text_labeled', fields: { LABEL: 'Ort' } },
-            },
-            ADD3: {
-              shadow: { type: 'ha_text_labeled', fields: { LABEL: 'Preis' } },
-            },
+            ADD0: { shadow: { type: 'ha_text', fields: { TEXT: '' } } },
+            ADD1: { shadow: { type: 'ha_text', fields: { TEXT: '' } } },
           },
         },
+        { kind: 'block', type: 'ha_text_labeled' },
+        { kind: 'block', type: 'ha_text_length' },
+        { kind: 'block', type: 'ha_text_contains' },
+        { kind: 'block', type: 'ha_text_is_empty' },
+        { kind: 'block', type: 'ha_entity_state' },
+        { kind: 'block', type: 'ha_entity_attribute' },
+        { kind: 'block', type: 'ha_variable_get' },
       ],
     },
     {

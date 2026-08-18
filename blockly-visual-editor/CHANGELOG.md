@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.6.0
+
+- Logik wie in ioBroker Blockly: Vergleich (= ≠ < ≤ > ≥), und/oder, nicht, wahr/falsch, falls/mache
+- Mathematik: Zahl, rechnen, in Zahl umwandeln
+- Text allgemein: Text erstellen, Länge, enthält, ist leer – ohne spezielle Vorlagen
+- Vergleiche können als Bedingung oder im Falls-Block verwendet werden
+
 ## 0.5.0
 
 - Textbausteine: festen Text, Entitätszustand, Attribute und Variablen zu einer Nachricht zusammensetzen
