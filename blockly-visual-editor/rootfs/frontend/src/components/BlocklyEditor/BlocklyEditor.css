@@ -328,3 +328,42 @@
   stroke: #ffca28;
   stroke-width: 2px;
 }
+
+.blockly-editor-host .ha-dark-text .blocklyText,
+.blockly-editor-host .ha-dark-text .blocklyDropdownText {
+  fill: #1b1f2a !important;
+}
+
+.blockly-editor-host .blocklyEditableField > rect,
+.blockly-editor-host .blocklyNonEditableField > rect {
+  rx: 10px;
+  ry: 10px;
+  fill: #ffffff;
+  fill-opacity: 0.94;
+}
+
+.blockly-editor-host .blocklyDropdownRect {
+  rx: 10px;
+  ry: 10px;
+}
+
+.blockly-editor-host .blocklyEditableField:not(.blocklyEditing):hover > rect {
+  stroke: rgba(255, 255, 255, 0.65);
+  stroke-width: 1.5px;
+}
+
+.blocklyHtmlInput {
+  color: #1b1f2a !important;
+  border-radius: 10px !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
+}
+
+.blocklyDropDownDiv {
+  border-radius: 12px !important;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.28) !important;
+  padding: 4px !important;
+}
+
+.blocklyDropDownDiv .blocklyMenuItem {
+  border-radius: 8px !important;
+}

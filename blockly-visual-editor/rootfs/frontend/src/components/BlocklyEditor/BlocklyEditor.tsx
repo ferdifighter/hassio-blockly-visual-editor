@@ -13,8 +13,10 @@ import { HA_TOOLBOX } from './toolbox';
 import { resolveBlocklyTheme } from './themes';
 import {
   applyBlocklyInteractionConfig,
+  attachBlockTextContrast,
   HA_RENDERER,
   HA_RENDERER_OVERRIDES,
+  syncBlockTextContrast,
 } from './blocklySetup';
 import {
   automationToYaml,
@@ -151,6 +153,7 @@ const BlocklyEditor = forwardRef<BlocklyEditorHandle, BlocklyEditorProps>(
         });
         workspaceRef.current = workspace;
         Blockly.serialization.workspaces.load(emptyWorkspaceState(), workspace);
+        attachBlockTextContrast(workspace);
         workspace.addChangeListener(() => emitYaml());
         resizeWorkspace(workspace);
         setWorkspaceReady(true);
@@ -181,6 +184,7 @@ const BlocklyEditor = forwardRef<BlocklyEditorHandle, BlocklyEditorProps>(
         return;
       }
       workspace.setTheme(resolveBlocklyTheme(theme));
+      syncBlockTextContrast(workspace);
     }, [theme]);
 
     useEffect(() => {

@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.6.3
+
+- Schrift auf hellen Textblöcken ist schwarz und wieder lesbar
+- Eingabefelder und Dropdowns sind wieder rund und modern, die 3D-Blöcke bleiben
+
 ## 0.6.2
 
 - Blöcke rasten früher und über eine größere Distanz ein; das Raster zieht sie nicht mehr vom Anschluss weg
