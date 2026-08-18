@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.6.2
+
+- Blöcke rasten früher und über eine größere Distanz ein; das Raster zieht sie nicht mehr vom Anschluss weg
+- Eingerastete Blöcke heben sich durch abgerundete 3D-Kanten ab, ähnlich wie in ioBroker Blockly
+
 ## 0.6.1
 
 - „erstelle Text aus“ zeigt die einzelnen Teile untereinander, damit der Block nicht in die Breite wächst

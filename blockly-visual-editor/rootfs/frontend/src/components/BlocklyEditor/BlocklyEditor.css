@@ -311,13 +311,20 @@
   margin: 2px 4px !important;
   height: 32px !important;
 }
-  margin: 0;
-  padding: 16px;
-  height: 100%;
-  overflow: auto;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-  font-size: 12px;
-  white-space: pre;
-  background: transparent;
-  color: inherit;
+
+.blockly-editor-host .blocklyHighlightedConnectionPath {
+  fill: none !important;
+  stroke: #ffca28 !important;
+  stroke-width: 8px !important;
+  stroke-linecap: round;
+}
+
+.blockly-editor-host .blocklyPathDark {
+  fill-opacity: 0.9;
+}
+
+.blockly-editor-host .blocklyInsertionMarker > .blocklyPath {
+  fill-opacity: 0.5;
+  stroke: #ffca28;
+  stroke-width: 2px;
 }

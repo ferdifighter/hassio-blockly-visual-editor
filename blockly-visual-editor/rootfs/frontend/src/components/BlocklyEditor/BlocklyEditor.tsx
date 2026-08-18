@@ -12,6 +12,11 @@ import { registerAllHomeAssistantBlocks, warmPickerCaches } from './blocks';
 import { HA_TOOLBOX } from './toolbox';
 import { resolveBlocklyTheme } from './themes';
 import {
+  applyBlocklyInteractionConfig,
+  HA_RENDERER,
+  HA_RENDERER_OVERRIDES,
+} from './blocklySetup';
+import {
   automationToYaml,
   emptyWorkspaceState,
   validateWorkspace,
@@ -24,6 +29,7 @@ import { apiGet, apiSend } from '../../api';
 import './BlocklyEditor.css';
 
 Blockly.setLocale(De as unknown as { [key: string]: string });
+applyBlocklyInteractionConfig();
 registerAllHomeAssistantBlocks();
 
 export interface BlocklyEditorHandle {
@@ -118,13 +124,14 @@ const BlocklyEditor = forwardRef<BlocklyEditorHandle, BlocklyEditorProps>(
         const workspace = Blockly.inject(host, {
           toolbox: HA_TOOLBOX,
           theme: resolveBlocklyTheme(theme),
-          renderer: 'zelos',
+          renderer: HA_RENDERER,
+          rendererOverrides: HA_RENDERER_OVERRIDES,
           media: './media/',
           grid: {
             spacing: 20,
             length: 3,
             colour: '#555',
-            snap: true,
+            snap: false,
           },
           trashcan: true,
           move: {
