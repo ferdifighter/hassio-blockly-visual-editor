@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.6.7
+
+- Alexa liest den aktuellen Status (Preis, Ort, …), nicht den Namen der auf dem Block steht
+- Block „Status von“; Attribut friendly_name wird als Status gelesen
+
 ## 0.6.6
 
 - Eingegebener Text in Block-Feldern ist wieder lesbar (dunkle Schrift auf hellem Feld)

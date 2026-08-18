@@ -353,6 +353,38 @@ describe('Home Assistant Blockly-Generator', () => {
     workspace.dispose();
   });
 
+  it('liest für Alexa den Status statt des Namens auf dem Block', () => {
+    const workspace = new Blockly.Workspace();
+    const join = workspace.newBlock('ha_text_join');
+    join.setFieldValue('space', 'SEP');
+    const hello = workspace.newBlock('ha_text');
+    hello.setFieldValue('Radeberger ist für', 'TEXT');
+    join.getInput('ADD0')?.connection?.connect(hello.outputConnection!);
+    const price = workspace.newBlock('ha_entity_attribute');
+    price.setFieldValue('friendly_name', 'ATTR');
+    price.setFieldValue('sensor.radeberger_preis', 'ENTITY_ID');
+    join.getInput('ADD1')?.connection?.connect(price.outputConnection!);
+    const place = workspace.newBlock('ha_entity_state');
+    place.setFieldValue('sensor.radeberger_haendler', 'ENTITY_ID');
+    join.getInput('ADD2')?.connection?.connect(place.outputConnection!);
+
+    const alexa = workspace.newBlock('ha_alexa_speak');
+    alexa.setFieldValue('tts', 'SPEAK_TYPE');
+    alexa.setFieldValue('media_player.echo_buro', 'ENTITY_ID');
+    alexa.getInput('MESSAGE_VALUE')?.connection?.connect(join.outputConnection!);
+    expect(blockToAction(alexa)?.data).toEqual({
+      message: "{{ (\"Radeberger ist für\") ~ \" \" ~ (states('sensor.radeberger_preis')) ~ \" \" ~ (states('sensor.radeberger_haendler')) }}",
+      target: ['media_player.echo_buro'],
+      data: { type: 'tts' },
+    });
+
+    const unit = workspace.newBlock('ha_entity_attribute');
+    unit.setFieldValue('unit_of_measurement', 'ATTR');
+    unit.setFieldValue('sensor.radeberger_preis', 'ENTITY_ID');
+    expect(blockToExpression(unit)).toBe("state_attr('sensor.radeberger_preis', 'unit_of_measurement')");
+    workspace.dispose();
+  });
+
   it('wandelt gemischten Text in einen Jinja-Ausdruck', () => {
     expect(templateToExpression('Ort: {{ state_attr(\'sensor.bier\', \'store\') }}')).toBe(
       '"Ort: " ~ (state_attr(\'sensor.bier\', \'store\'))',

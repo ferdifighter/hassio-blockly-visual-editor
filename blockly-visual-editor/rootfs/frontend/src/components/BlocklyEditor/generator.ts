@@ -150,6 +150,14 @@ function compareExpression(left: string, right: string, op: string): string {
   }
 }
 
+function entityValueExpression(entityId: string, attr: string): string {
+  const key = attr.trim().toLowerCase();
+  if (!key || key === 'state' || key === 'status' || key === 'friendly_name') {
+    return `states('${entityId}')`;
+  }
+  return `state_attr('${entityId}', '${attr.trim()}')`;
+}
+
 export function blockToExpression(block: Blockly.Block | null): string {
   if (!block) {
     return "''";
@@ -172,8 +180,7 @@ export function blockToExpression(block: Blockly.Block | null): string {
     }
     case 'ha_entity_attribute': {
       const entityId = field(block, 'ENTITY_ID');
-      const attr = field(block, 'ATTR') || 'friendly_name';
-      return entityId ? `state_attr('${entityId}', '${attr}')` : "''";
+      return entityId ? entityValueExpression(entityId, field(block, 'ATTR')) : "''";
     }
     case 'ha_variable_get':
       return field(block, 'NAME') || 'var';

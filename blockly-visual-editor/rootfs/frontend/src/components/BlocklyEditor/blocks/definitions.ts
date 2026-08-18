@@ -312,22 +312,22 @@ export const HA_BLOCK_DEFINITIONS: Array<Record<string, unknown>> = [
   },
   {
     type: 'ha_entity_state',
-    message0: 'Zustand von %1',
+    message0: 'Status von %1',
     args0: [{ type: 'field_entity', name: 'ENTITY_ID', value: '' }],
     output: 'Text',
     colour: 65,
-    tooltip: 'Aktueller Zustand einer Entität, einsetzbar in Texten.',
+    tooltip: 'Aktueller Zustand einer Entität, z. B. Preis oder Ort. Das wird vorgelesen, nicht der Name auf dem Block.',
   },
   {
     type: 'ha_entity_attribute',
-    message0: 'Attribut %1 von %2',
+    message0: 'Status von %1  Attribut (optional) %2',
     args0: [
-      { type: 'field_input', name: 'ATTR', text: 'friendly_name' },
       { type: 'field_entity', name: 'ENTITY_ID', value: '' },
+      { type: 'field_input', name: 'ATTR', text: '' },
     ],
     output: 'Text',
     colour: 65,
-    tooltip: 'Ein Attribut einer Entität, z. B. Preis oder Angebotszeitraum.',
+    tooltip: 'Leer = aktueller Status (Preis, Ort, …). Nur ausfüllen, wenn ein bestimmtes Attribut nötig ist, z. B. unit_of_measurement.',
   },
   {
     type: 'ha_variable_get',
