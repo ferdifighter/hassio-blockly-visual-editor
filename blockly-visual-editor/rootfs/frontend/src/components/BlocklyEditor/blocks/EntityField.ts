@@ -47,7 +47,7 @@ export function labelForEntity(entityId: string): string {
 export class EntityField extends Blockly.FieldTextInput {
   static SERIALIZABLE = true;
 
-  private domainFilter?: string;
+  private domainFilters: string[] = [];
 
   static override fromJson(options: Record<string, unknown>): EntityField {
     const value = typeof options['value'] === 'string' ? options['value'] : '';
@@ -61,7 +61,10 @@ export class EntityField extends Blockly.FieldTextInput {
     domain?: string,
   ) {
     super(value ?? '', validator);
-    this.domainFilter = domain;
+    this.domainFilters = (domain || '')
+      .split(',')
+      .map((item) => item.trim())
+      .filter(Boolean);
   }
 
   override getText(): string {
@@ -73,18 +76,32 @@ export class EntityField extends Blockly.FieldTextInput {
   }
 
   private placeholderLabel(): string {
-    switch (this.domainFilter) {
-      case 'light':
-        return 'Licht wählen';
-      case 'switch':
-        return 'Schalter wählen';
-      case 'scene':
-        return 'Szene wählen';
-      case 'calendar':
-        return 'Kalender wählen';
-      default:
-        return 'Entität wählen';
+    const domains = this.domainFilters;
+    if (domains.includes('light') && domains.length === 1) {
+      return 'Licht wählen';
     }
+    if (domains.includes('switch') && domains.length === 1) {
+      return 'Schalter wählen';
+    }
+    if (domains.includes('scene')) {
+      return 'Szene wählen';
+    }
+    if (domains.includes('calendar')) {
+      return 'Kalender wählen';
+    }
+    if (domains.includes('input_text')) {
+      return 'Hilfstext wählen';
+    }
+    if (domains.includes('media_player')) {
+      return 'Alexa / Lautsprecher wählen';
+    }
+    if (domains.includes('person') || domains.includes('zone')) {
+      return 'Person / Zone wählen';
+    }
+    if (domains.includes('binary_sensor') || domains.includes('device_tracker')) {
+      return 'Anwesenheit wählen';
+    }
+    return 'Entität wählen';
   }
 
   protected override showEditor_(_e?: Event, _quietInput?: boolean): void {
@@ -96,8 +113,8 @@ export class EntityField extends Blockly.FieldTextInput {
 
     loadEntities()
       .then((entities) => {
-        const filtered = this.domainFilter
-          ? entities.filter((entity) => entity.domain === this.domainFilter)
+        const filtered = this.domainFilters.length
+          ? entities.filter((entity) => this.domainFilters.includes(entity.domain))
           : entities;
         filtered.sort((a, b) => a.friendly_name.localeCompare(b.friendly_name, 'de'));
         this.forceRerender();

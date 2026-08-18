@@ -26,19 +26,6 @@ export const HA_TOOLBOX = {
     },
     {
       kind: 'category',
-      name: 'Bedingungen',
-      colour: '#F9A825',
-      contents: [
-        { kind: 'block', type: 'ha_if_state' },
-        { kind: 'block', type: 'ha_if_numeric_state' },
-        { kind: 'block', type: 'ha_if_time' },
-        { kind: 'block', type: 'ha_if_date' },
-        { kind: 'block', type: 'ha_if_sun' },
-        { kind: 'block', type: 'ha_if_template' },
-      ],
-    },
-    {
-      kind: 'category',
       name: 'Logik',
       colour: '#43A047',
       contents: [
@@ -49,12 +36,63 @@ export const HA_TOOLBOX = {
     },
     {
       kind: 'category',
+      name: 'Text',
+      colour: '#C0CA33',
+      contents: [
+        { kind: 'block', type: 'ha_text' },
+        { kind: 'block', type: 'ha_text_labeled' },
+        { kind: 'block', type: 'ha_entity_state' },
+        { kind: 'block', type: 'ha_entity_attribute' },
+        { kind: 'block', type: 'ha_variable_get' },
+        {
+          kind: 'block',
+          type: 'ha_text_join',
+          extraState: { itemCount: 4 },
+          fields: { SEP: 'nl' },
+          inputs: {
+            ADD0: {
+              shadow: { type: 'ha_text', fields: { TEXT: 'Radeberger Pilsner Angebot' } },
+            },
+            ADD1: {
+              shadow: { type: 'ha_text_labeled', fields: { LABEL: 'Von' } },
+            },
+            ADD2: {
+              shadow: { type: 'ha_text_labeled', fields: { LABEL: 'Ort' } },
+            },
+            ADD3: {
+              shadow: { type: 'ha_text_labeled', fields: { LABEL: 'Preis' } },
+            },
+          },
+        },
+      ],
+    },
+    {
+      kind: 'category',
+      name: 'Bedingungen',
+      colour: '#F9A825',
+      contents: [
+        { kind: 'block', type: 'ha_if_state' },
+        { kind: 'block', type: 'ha_if_numeric_state' },
+        { kind: 'block', type: 'ha_if_time' },
+        { kind: 'block', type: 'ha_if_date' },
+        { kind: 'block', type: 'ha_if_sun' },
+        { kind: 'block', type: 'ha_if_present' },
+        { kind: 'block', type: 'ha_if_zone' },
+        { kind: 'block', type: 'ha_if_not_remembered' },
+        { kind: 'block', type: 'ha_if_template' },
+      ],
+    },
+    {
+      kind: 'category',
       name: 'Aktionen',
       colour: '#26A69A',
       contents: [
         { kind: 'block', type: 'ha_call_service' },
         { kind: 'block', type: 'ha_activate_scene' },
         { kind: 'block', type: 'ha_notify' },
+        { kind: 'block', type: 'ha_notify_telegram' },
+        { kind: 'block', type: 'ha_alexa_speak' },
+        { kind: 'block', type: 'ha_remember' },
         { kind: 'block', type: 'ha_delay' },
         { kind: 'block', type: 'ha_wait_for_state' },
         { kind: 'block', type: 'ha_wait_for_template' },

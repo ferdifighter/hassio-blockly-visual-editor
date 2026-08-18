@@ -35,6 +35,9 @@ const CONDITION_TYPES = new Set([
   'ha_if_and',
   'ha_if_or',
   'ha_if_not',
+  'ha_if_present',
+  'ha_if_zone',
+  'ha_if_not_remembered',
 ]);
 
 const ACTION_TYPES = new Set([
@@ -53,6 +56,9 @@ const ACTION_TYPES = new Set([
   'ha_switch_toggle',
   'ha_set_variable',
   'ha_send_push',
+  'ha_notify_telegram',
+  'ha_alexa_speak',
+  'ha_remember',
 ]);
 
 function field(block: Blockly.Block, name: string): string {
@@ -85,6 +91,92 @@ function splitCsv(raw: string | undefined): string[] | undefined {
   }
   const items = raw.split(',').map((item) => item.trim()).filter(Boolean);
   return items.length ? items : undefined;
+}
+
+export function templateToExpression(value: string): string {
+  const source = String(value ?? '');
+  if (!source) {
+    return "''";
+  }
+  if (!source.includes('{{')) {
+    return JSON.stringify(source);
+  }
+  const parts: string[] = [];
+  const re = /\{\{([\s\S]*?)\}\}/g;
+  let last = 0;
+  let match: RegExpExecArray | null;
+  while ((match = re.exec(source))) {
+    if (match.index > last) {
+      parts.push(JSON.stringify(source.slice(last, match.index)));
+    }
+    parts.push(`(${match[1].trim()})`);
+    last = match.index + match[0].length;
+  }
+  if (last < source.length) {
+    parts.push(JSON.stringify(source.slice(last)));
+  }
+  return parts.length ? parts.join(' ~ ') : "''";
+}
+
+export function asValueTemplate(value: string): string {
+  return `{{ ${templateToExpression(value)} }}`;
+}
+
+export function blockToText(block: Blockly.Block | null): string {
+  if (!block) {
+    return '';
+  }
+  switch (block.type) {
+    case 'ha_text':
+      return field(block, 'TEXT');
+    case 'ha_text_labeled': {
+      const label = field(block, 'LABEL') || 'Wert';
+      const value = inputToText(block, 'VALUE');
+      return `${label}: ${value}`;
+    }
+    case 'ha_entity_state': {
+      const entityId = field(block, 'ENTITY_ID');
+      return entityId ? `{{ states('${entityId}') }}` : '';
+    }
+    case 'ha_entity_attribute': {
+      const entityId = field(block, 'ENTITY_ID');
+      const attr = field(block, 'ATTR') || 'friendly_name';
+      return entityId ? `{{ state_attr('${entityId}', '${attr}') }}` : '';
+    }
+    case 'ha_variable_get': {
+      const name = field(block, 'NAME') || 'var';
+      return `{{ ${name} }}`;
+    }
+    case 'ha_text_join': {
+      const sepField = field(block, 'SEP');
+      const sep = sepField === 'nl' ? '\n' : sepField === 'space' ? ' ' : '';
+      const parts: string[] = [];
+      let index = 0;
+      while (block.getInput(`ADD${index}`)) {
+        const part = inputToText(block, `ADD${index}`);
+        if (part) {
+          parts.push(part);
+        }
+        index += 1;
+      }
+      return parts.join(sep);
+    }
+    default:
+      return '';
+  }
+}
+
+export function inputToText(block: Blockly.Block, inputName: string): string {
+  return blockToText(block.getInputTargetBlock(inputName));
+}
+
+function messageFromBlock(block: Blockly.Block): string {
+  return inputToText(block, 'MESSAGE_VALUE') || field(block, 'MESSAGE');
+}
+
+function notifyService(raw: string, fallback: string): string {
+  const value = raw.trim() || fallback;
+  return value.includes('.') ? value : `notify.${value}`;
 }
 
 export function collectStatementBlocks(block: Blockly.Block, inputName: string): Blockly.Block[] {
@@ -225,6 +317,33 @@ export function blockToCondition(block: Blockly.Block): JsonObject | null {
         .filter((item): item is JsonObject => Boolean(item));
       return { condition: 'not', conditions: inner };
     }
+    case 'ha_if_present': {
+      const entityId = field(block, 'ENTITY_ID');
+      const domain = entityId.split('.')[0];
+      const state = domain === 'person' || domain === 'device_tracker' ? 'home' : 'on';
+      return omitEmpty({
+        condition: 'state',
+        entity_id: entityId,
+        state,
+      });
+    }
+    case 'ha_if_zone':
+      return omitEmpty({
+        condition: 'zone',
+        entity_id: field(block, 'ENTITY_ID'),
+        zone: field(block, 'ZONE'),
+      });
+    case 'ha_if_not_remembered': {
+      const value = inputToText(block, 'VALUE');
+      const helper = field(block, 'HELPER');
+      if (!helper) {
+        return null;
+      }
+      return {
+        condition: 'template',
+        value_template: `{{ (${templateToExpression(value)}) != states('${helper}') }}`,
+      };
+    }
     default:
       return null;
   }
@@ -249,12 +368,11 @@ export function blockToAction(block: Blockly.Block): JsonObject | null {
     case 'ha_activate_scene':
       return serviceAction('scene.turn_on', field(block, 'SCENE_ID') || field(block, 'SCENE'));
     case 'ha_notify': {
-      const raw = field(block, 'NOTIFY_SERVICE') || 'notify.notify';
-      const action = raw.includes('.') ? raw : `notify.${raw}`;
+      const action = notifyService(field(block, 'NOTIFY_SERVICE'), 'notify.notify');
       return omitEmpty({
         action,
         data: omitEmpty({
-          message: field(block, 'MESSAGE'),
+          message: messageFromBlock(block),
           title: optionalField(block, 'TITLE'),
         }),
       });
@@ -331,15 +449,49 @@ export function blockToAction(block: Blockly.Block): JsonObject | null {
     case 'ha_set_variable':
       return {
         variables: {
-          [field(block, 'NAME') || field(block, 'VARIABLE_NAME') || 'var']: field(block, 'VALUE'),
+          [field(block, 'NAME') || field(block, 'VARIABLE_NAME') || 'var']:
+            inputToText(block, 'VALUE_VALUE') || field(block, 'VALUE'),
         },
       };
     case 'ha_send_push': {
-      const raw = field(block, 'NOTIFY_SERVICE') || 'notify.notify';
-      const action = raw.includes('.') ? raw : `notify.${raw}`;
+      const action = notifyService(field(block, 'NOTIFY_SERVICE'), 'notify.notify');
       return {
         action,
-        data: { message: field(block, 'MESSAGE') },
+        data: { message: messageFromBlock(block) },
+      };
+    }
+    case 'ha_notify_telegram': {
+      const action = notifyService(field(block, 'SERVICE'), 'notify.telegram');
+      return omitEmpty({
+        action,
+        data: omitEmpty({
+          message: messageFromBlock(block),
+          title: optionalField(block, 'TITLE'),
+        }),
+      });
+    }
+    case 'ha_alexa_speak': {
+      const target = optionalField(block, 'ENTITY_ID');
+      const speakType = field(block, 'SPEAK_TYPE') || 'tts';
+      return omitEmpty({
+        action: 'notify.alexa_media',
+        data: omitEmpty({
+          message: messageFromBlock(block),
+          target: target ? [target] : undefined,
+          data: { type: speakType },
+        }),
+      });
+    }
+    case 'ha_remember': {
+      const helper = field(block, 'HELPER');
+      const value = inputToText(block, 'VALUE');
+      if (!helper) {
+        return null;
+      }
+      return {
+        action: 'input_text.set_value',
+        target: { entity_id: helper },
+        data: { value: asValueTemplate(value) },
       };
     }
     default:

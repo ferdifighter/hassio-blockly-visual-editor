@@ -11,6 +11,7 @@ import { StateField } from './StateField';
 import { TimeField } from './TimeField';
 import { WeekdayField } from './WeekdayField';
 import { refreshPickerFields } from './fieldUtils';
+import { registerTextBlocks } from './textBlocks';
 
 let registered = false;
 
@@ -40,6 +41,7 @@ export function registerAllHomeAssistantBlocks(): void {
   registerField('field_optional_number', OptionalNumberField);
 
   Blockly.common.defineBlocksWithJsonArray(HA_BLOCK_DEFINITIONS as Parameters<typeof Blockly.common.defineBlocksWithJsonArray>[0]);
+  registerTextBlocks();
   registered = true;
 }
 

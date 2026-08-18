@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.5.0
+
+- Textbausteine: festen Text, Entitätszustand, Attribute und Variablen zu einer Nachricht zusammensetzen
+- Telegram- und Alexa-Blöcke (Integrationen müssen in Home Assistant installiert sein)
+- Companion-App kann denselben Textbaustein senden
+- Bedingungen für Anwesenheit im Raum und „noch nicht gemeldet“
+- Aktion „als gemeldet speichern“ verhindert, dass Alexa dieselbe Meldung ständig wiederholt
+
 ## 0.4.2
 
 - Ordner- und Script-Icons auf derselben Ebene stehen wieder untereinander
