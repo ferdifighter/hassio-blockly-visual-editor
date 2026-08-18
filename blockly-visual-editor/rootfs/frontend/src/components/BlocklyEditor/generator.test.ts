@@ -176,6 +176,16 @@ describe('Home Assistant Blockly-Generator', () => {
     workspace.dispose();
   });
 
+  it('stapelt die Textteile untereinander statt in einer Zeile', () => {
+    const workspace = new Blockly.Workspace();
+    const join = workspace.newBlock('ha_text_join');
+    expect(join.getInputsInline()).toBe(false);
+    expect(join.getInput('ADD0')).toBeTruthy();
+    expect(join.getInput('ADD1')).toBeTruthy();
+    expect(join.getInput('ADD2')).toBeTruthy();
+    workspace.dispose();
+  });
+
   it('setzt allgemeinen Text aus Teilen zusammen', () => {
     const workspace = new Blockly.Workspace();
     const join = workspace.newBlock('ha_text_join');

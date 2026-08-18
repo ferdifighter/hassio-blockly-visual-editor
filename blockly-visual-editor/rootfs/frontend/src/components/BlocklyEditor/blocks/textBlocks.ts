@@ -29,6 +29,7 @@ export function registerTextBlocks(): void {
       this.itemCount_ = 3;
       this.setColour(65);
       this.setOutput(true, 'Text');
+      this.setInputsInline(false);
       this.setTooltip('Erstellt einen Text aus mehreren Teilen, genau wie in ioBroker Blockly.');
       this.appendDummyInput('HEADER')
         .appendField('erstelle Text aus')
@@ -76,12 +77,13 @@ export function registerTextBlocks(): void {
       }
       for (let i = 0; i < this.itemCount_; i += 1) {
         if (!this.getInput(`ADD${i}`)) {
-          this.appendValueInput(`ADD${i}`);
+          this.appendValueInput(`ADD${i}`).setAlign(Blockly.inputs.Align.RIGHT);
         }
       }
       this.appendDummyInput('CONTROLS')
         .appendField(new Blockly.FieldImage(PLUS_ICON, 16, 16, '+', () => this.addPart_()))
         .appendField(new Blockly.FieldImage(MINUS_ICON, 16, 16, '-', () => this.removePart_()));
+      this.setInputsInline(false);
     },
   };
 }

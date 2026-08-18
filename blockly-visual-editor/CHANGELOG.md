@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.6.1
+
+- „erstelle Text aus“ zeigt die einzelnen Teile untereinander, damit der Block nicht in die Breite wächst
+
 ## 0.6.0
 
 - Logik wie in ioBroker Blockly: Vergleich (= ≠ < ≤ > ≥), und/oder, nicht, wahr/falsch, falls/mache
