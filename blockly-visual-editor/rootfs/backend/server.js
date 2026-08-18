@@ -9,6 +9,7 @@ const axios = require('axios');
 require('dotenv').config();
 const {
   findMatchingState,
+  findPersonForTarget,
   pickDeviceName,
 } = require('./notifyNames');
 const { simulateAutomation } = require('./simulate');
@@ -745,19 +746,18 @@ app.get('/api/notify-targets', async (req, res) => {
       const notifyEntity = findMatchingState(states, ['notify.'], svc.serviceName)
         || findMatchingState(states, ['notify.'], objectId);
 
-      const person = persons.find((item) => {
-        const deviceTrackers = item.attributes?.device_trackers || [];
-        if (tracker && deviceTrackers.includes(tracker.entity_id)) {
-          return true;
-        }
-        return deviceTrackers.some((id) => id.replace('device_tracker.', '') === objectId);
-      });
-
       const deviceName = pickDeviceName({
         serviceName: svc.serviceName,
         serviceMetaName: svc.name,
         tracker,
         notifyEntity,
+      });
+      const person = findPersonForTarget({
+        persons,
+        states,
+        objectId,
+        tracker,
+        deviceName,
       });
       const personName = person?.attributes?.friendly_name || null;
 

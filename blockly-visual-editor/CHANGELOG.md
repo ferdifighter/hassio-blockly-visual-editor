@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.6.4
+
+- Personen werden im Dialog „Benachrichtigung senden an“ wieder den Smartphones zugeordnet
+
 ## 0.6.3
 
 - Schrift auf hellen Textblöcken ist schwarz und wieder lesbar
