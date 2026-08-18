@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.4.2
+
+- Ordner- und Script-Icons auf derselben Ebene stehen wieder untereinander
+
 ## 0.4.1
 
 - Automatisierungen können wieder aus einem Ordner auf die gleiche Ebene wie der Ordner gezogen werden

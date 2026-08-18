@@ -819,7 +819,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onSelectionChange }) => {
                         ? (
                             <button
                               type="button"
-                              className="tree-folder"
+                              className="tree-icon tree-folder"
                               title={isExpanded ? 'Zuklappen' : 'Aufklappen'}
                               onClick={(e: React.MouseEvent) => {
                                 e.stopPropagation();
@@ -829,11 +829,15 @@ const Sidebar: React.FC<SidebarProps> = ({ onSelectionChange }) => {
                               }}
                             >
                               {isExpanded
-                                ? <FaRegFolderOpenIcon color="#f7c873" className="icon" />
-                                : <FaRegFolderIcon color="#f7c873" className="icon" />}
+                                ? <FaRegFolderOpenIcon color="#f7c873" size={16} />
+                                : <FaRegFolderIcon color="#f7c873" size={16} />}
                             </button>
                           )
-                        : <FaFileIcon color="#8ecae6" className="icon" />}
+                        : (
+                            <span className="tree-icon" aria-hidden="true">
+                              <FaFileIcon color="#8ecae6" size={16} />
+                            </span>
+                          )}
                       {editingId === element.id ? (
                         <div className="tree-edit">
                           <input
@@ -862,7 +866,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onSelectionChange }) => {
                         </div>
                       ) : (
                         <>
-                          <span>{element.name ?? ''}</span>
+                          <span className="tree-name">{element.name ?? ''}</span>
                           {element.type === 'folder' && editingId !== element.id && itemCount > 0 && (
                             <span className="tree-count">{itemCount}</span>
                           )}
